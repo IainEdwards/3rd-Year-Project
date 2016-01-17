@@ -3,8 +3,8 @@
 
 #include <SDL.h>
 #include <SDL_image.h>
-#include "Texture2D.h"
 #include "Player.h"
+#include "Timer.h"
 #include <stdio.h>
 #include <string>
 
@@ -13,30 +13,20 @@ class Game
 public:
 
 	Game();
-	~Game();
-
-	bool IsRunning() { return Running; }
+	~Game();	
 
 	void HandleEvents();
 	void Render();
 	void Update();	
-	
+	bool isRunning();
 
 private:
 
-	SDL_Window* Window;
-	SDL_Renderer* Renderer;
+	bool running = false;
 
-	bool Running = false;
-
-	const int SCREEN_WIDTH = 640;
-	const int SCREEN_HEIGHT = 480;
-
-	Texture2D playerTexture;
-
-	Player Player;	
-
-	Texture2D testTexture;
+	const int SCREEN_WIDTH = 512;
+	const int SCREEN_HEIGHT = 448;	
+	const int FPS = 60;
 };
 
 
