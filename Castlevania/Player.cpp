@@ -1,73 +1,208 @@
 #include "Player.h"
 
+const float Player::MoveSpeed = 2.0f;
+const float Player::GravityAcceleration = 0.3f;
+const float Player::JumpVelocity = -6.5f;
+
+
+// Gain access to keystate array
+//const Uint8 *keys = SDL_GetKeyboardState(NULL);
+
 Player::Player()
 {
-	playerBox.x = PLAYER_OFFSET_X;
-	playerBox.y = PLAYER_OFFSET_Y;
+	playerBox.x = 0;// PLAYER_OFFSET_X;
+	playerBox.y = 0;// PLAYER_OFFSET_Y;
 	playerBox.w = PLAYER_WIDTH;
 	playerBox.h = PLAYER_HEIGHT;
 	velX = velY = 0;
+	//posX = posY = 0;
+	flip = false;
+	jumping = false;
+	jumpTime = 0;
+	jumpRelease = false;	
+	leftPress = false;
+	rightPress = false;
+	attacking = false;
+
+	frameTime = 0;
+	currentFrame = 0;
 }
 
 int Player::PosX()
 {
-	return playerBox.x - PLAYER_OFFSET_X;
+	return playerBox.x;// posX;// -PLAYER_OFFSET_X;// playerBox.x - PLAYER_OFFSET_X;
 }
 
 int Player::PosY()
 {
-	return playerBox.y - PLAYER_OFFSET_Y;
+	return playerBox.y;// posY;// -PLAYER_OFFSET_Y;// playerBox.y - PLAYER_OFFSET_Y;
+}
+
+bool Player::Flip()
+{
+	return flip;
+}
+
+PlayerAnimation Player::Animation()
+{
+	return currentAnimation;
+}
+
+int Player::CurrentFrame()
+{
+	return currentFrame;
 }
 
 void Player::GetInput(SDL_Event& e)
 {
 	//If a key was pressed
 	if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
-	{
+	{			
 		//Adjust the velocity
 		switch (e.key.keysym.sym)
-		{
-		case SDLK_UP: velY -= MaxMoveSpeed; break;
-		case SDLK_DOWN: velY += MaxMoveSpeed; break;
-		case SDLK_LEFT: velX -= MaxMoveSpeed; break;
-		case SDLK_RIGHT: velX += MaxMoveSpeed; break;
+		{		
+		case SDLK_LEFT: 
+			leftPress = true;				
+			break;			
+			
+		case SDLK_RIGHT:
+			rightPress = true;			
+			break;			
+			
+		case SDLK_x: 
+			if (!jumping && !attacking)
+			{
+				jumping = true;
+				currentAnimation = JUMPING;
+				jumpTime = 60;
+				velY = JumpVelocity;
+			}			
+			break;
+		case SDLK_z:
+			if (!jumping && !attacking)
+			{
+				currentFrame = 0;
+				currentAnimation = ATTACKING;
+				attacking = true;
+				attackTime = 60;
+				velX = 0;
+			}
 		}
 	}
 	else if (e.type == SDL_KEYUP && e.key.repeat == 0)
 	{
 		//Adjust the velocity
 		switch (e.key.keysym.sym)
-		{
-		case SDLK_UP: velY += MaxMoveSpeed; break;
-		case SDLK_DOWN: velY -= MaxMoveSpeed; break;
-		case SDLK_LEFT: velX += MaxMoveSpeed; break;
-		case SDLK_RIGHT: velX -= MaxMoveSpeed; break;
+		{		
+		case SDLK_LEFT: 
+			leftPress = false;
+			break;
+			
+		case SDLK_RIGHT: 
+			rightPress = false;
+			break;
+			
 		}
 	}
 }
 
 void Player::ApplyPhysics(Tile *tiles[])
 {
-	playerBox.x += velX;
+	//Apply physics from key presses and set animation
+
+	frameTime++;
+
+	if (60 / frameTime <= 4)
+	{
+		frameTime = 0;
+		currentFrame += 1;
+		if (currentFrame >= 4)
+			currentFrame = 0;
+	}
+
+	if (velX > 0)
+		flip = false;
+	if (velX < 0)
+		flip = true;
+
+	if (jumping)
+	{
+		jumpTime--;
+		if (jumpTime <= 30)
+		{
+			currentAnimation = IDLE;
+			velY += 0.7f;
+		}
+	}
+
+	if (attacking)
+	{
+		attackTime--;
+		if (attackTime <= 20)
+		{
+			attacking = false;
+			currentAnimation = IDLE;
+		}
+	}
+
+	if (!jumping && !attacking)
+	{
+		velY += 0.7f;
+
+		if (rightPress && !leftPress)
+		{
+			velX = MoveSpeed;
+			currentAnimation = MOVING;
+		}
+
+		if (!rightPress && leftPress)
+		{
+			velX = 0 - MoveSpeed;
+			currentAnimation = MOVING;
+		}
+
+		if (!rightPress && !leftPress)
+		{
+			velX = 0;
+			currentAnimation = IDLE;
+		}
+
+		if (rightPress && leftPress)
+		{
+			velX = 0;
+			currentAnimation = IDLE;
+		}
+	}
+	velY += GravityAcceleration;
+
+	playerBox.x += (int)round(velX);	
 
 	//If the player went too far to the left or right
 	if ((playerBox.x < 0) || (playerBox.x + PLAYER_WIDTH > LEVEL_WIDTH) || touchesWall(playerBox, tiles))
 	{
 		//Move back
-		playerBox.x -= velX;
+		playerBox.x -= (int)round(velX);
 	}
 
-	//Move the dot up or down
-	playerBox.y += velY;
+	//Move the player up or down
+	playerBox.y += (int)round(velY);	
 
-	//If the dot went too far up or down
+	//If the player went too far up or down
 	if ((playerBox.y < 0) || (playerBox.y + PLAYER_HEIGHT > LEVEL_HEIGHT) || touchesWall(playerBox, tiles))
 	{
 		//Move back
-		playerBox.y -= velY;
-	}
-
+		playerBox.y -= (int)round(velY);
+		jumping = false;
+		velY = 0;			
+	}	
 }
+
+void Player::DoAttack()
+{
+	attacking = true;
+	attackTime = 30;
+}
+
 
 bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 {
@@ -81,6 +216,18 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 			if (checkCollision(box, tiles[i]->Box()))
 			{
 				return true;
+			}
+		}
+		
+		//If the tile is a platform type tile
+		if (tiles[i]->Type() == 2)
+		{
+			if ((box.y + 4) <= tiles[i]->Box().y)
+			{
+				if (checkCollision(box, tiles[i]->Box()))
+				{
+					return true;
+				}
 			}
 		}
 	}
@@ -167,4 +314,6 @@ void Player::Reset(int x, int y)
 	playerBox.x = x;
 	playerBox.y = y;
 	velX = velY = 0;
+	//posX = x;
+	//posY = y;
 }

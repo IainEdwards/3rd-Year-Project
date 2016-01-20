@@ -17,7 +17,7 @@ public:
 
 	void UpdateLevel(SDL_Rect& camera);
 
-	void DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera);
+	void DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 
 	bool setTiles(std::string levelName);
 
@@ -26,7 +26,7 @@ public:
 	//Tile constants
 	const int TILE_WIDTH = 32;
 	const int TILE_HEIGHT = 32;
-	const int TOTAL_TILES = 2112;	
+	const int TOTAL_TILES = 2112;		
 
 	const int LEVEL_WIDTH = 5632;
 	const int LEVEL_HEIGHT = 448;
@@ -39,11 +39,6 @@ private:
 
 	int spawnPointX;
 	int spawnPointY;
-
-	
-
-	
-
 };
 
 #endif

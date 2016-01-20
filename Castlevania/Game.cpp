@@ -29,14 +29,12 @@ Game::Game()
 	//Create vsynced Renderer for Window
 	Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	//Set Renderer colour
-	SDL_SetRenderDrawColor(Renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	//Initialise PNG loading
-	//int imgFlags = IMG_INIT_PNG;
+	SDL_SetRenderDrawColor(Renderer, 0xFF, 0xFF, 0xFF, 0xFF);	
 
 	//Allow game loop to start running
 	running = true;
 
-	//gameTime.Start();
+	gameTime.Start();
 
 	//Initialise the camera
 	SDL_Rect camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
@@ -97,7 +95,7 @@ void Game::Render()
 	SDL_RenderClear(Renderer);		
 
 	//Draw level, includes player
-	level.DrawLevel(tm, Renderer, camera);
+	level.DrawLevel(tm, Renderer, camera, frameCount);
 
 	SDL_RenderPresent(Renderer);
 }

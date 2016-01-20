@@ -20,6 +20,8 @@ public:
 	void Update();	
 	bool isRunning();
 
+	Timer gameTime;
+
 private:
 
 	bool running = false;
