@@ -21,13 +21,14 @@ class Tile
 {
 public:
 	//Initializes position and type
-	Tile(int x, int y, int tileType);
+	//Tile(int x, int y, int tileType);
+	Tile(int x, int y, char tileType);
 
 	//Shows the tile
 	void RenderTile(SDL_Rect& camera, Tile* tiles[], TextureManager* tm, SDL_Renderer* renderer);
 
 	//Get the tile type
-	int Type();
+	char Type();
 
 	int Row();
 
@@ -46,7 +47,9 @@ private:
 	SDL_Rect tileBox;
 
 	//The tile type
-	int type;
+	//int type;
+
+	char type;
 
 	int tileRow;
 

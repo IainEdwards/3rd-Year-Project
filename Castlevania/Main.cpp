@@ -9,9 +9,8 @@ int main(int argc, char* args[])
 
 	while (game->isRunning())
 	{
-		game->HandleEvents();
-		game->Render();
-		game->Update();
+		game->HandleGameState();
+		game->Render();		
 	}
 
 	delete game;

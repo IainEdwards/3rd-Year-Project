@@ -2,16 +2,19 @@
 #define PLAYER_H
 
 #include <SDL.h>
+#include <SDL_mixer.h>
 #include <string>
 #include "Tile.h"
-#include "Timer.h"
+#include "SoundManager.h"
 
 enum PlayerAnimation
 {
 	IDLE,
 	MOVING,
 	JUMPING,
-	ATTACKING
+	ATTACKING,
+	CROUCHING,
+	CROUCH_ATTACK
 };
 
 class Player
@@ -21,22 +24,22 @@ public:
 	Player();
 	~Player() {};
 
-	void LoadContent(SDL_Renderer* renderer);
+	void Load(TextureManager* tm, SDL_Renderer* renderer, SoundManager* sm);
 
-	void GetInput(SDL_Event& e);
+	void GetInput(SDL_Event& e, SoundManager* sm);
 
 	void ApplyPhysics(Tile *tiles[]);
+
+	void Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 
 	void setCamera(SDL_Rect& camera);
 
 	bool touchesWall(SDL_Rect box, Tile* tiles[]);	
 
-	bool checkCollision(SDL_Rect a, SDL_Rect b);
-	
+	bool checkCollision(SDL_Rect a, SDL_Rect b);	
 
 	void Reset(int x, int y);
 
-	void OnKilled();
 
 
 	//Player constants	
@@ -49,13 +52,9 @@ public:
 	const int SCREEN_WIDTH = 512;
 	const int SCREEN_HEIGHT = 448;
 
-	const int LEVEL_WIDTH = 5632;
-	const int LEVEL_HEIGHT = 448;
-
 	//Tile constants
 	const int TILE_WIDTH = 32;
-	const int TILE_HEIGHT = 32;
-	const int TOTAL_TILES = 2112;
+	const int TILE_HEIGHT = 32;	
 
 	int CurrentFrame();
 
@@ -66,18 +65,26 @@ public:
 
 	bool Flip();
 
+	SDL_Rect AttackBox();
+	SDL_Rect PlayerBox();	
+
+	Mix_Chunk *whipSFX = NULL;
+
+	void SetLevelArea(int width, int height, int tiles);
+
+	bool ReachedExit();
+
 private:
 
 	PlayerAnimation currentAnimation;	
 
 	SDL_Rect playerBox;
+	SDL_Rect attackBox;
 
 	float posX, posY;
 	float velX, velY;
 
-	bool flip;
-	
-	void DoAttack();	
+	bool flip;	
 
 	//Player movement constants
 	static const float MoveSpeed;
@@ -91,10 +98,20 @@ private:
 	bool jumping;	
 	int jumpTime;
 	bool jumpRelease;
+	bool onGround;
+
 	bool leftPress;
 	bool rightPress;	
 
 	bool attacking;
 	int attackTime;
+
+	bool crouching;
+
+	int totalTiles;
+	int levelWidth;
+	int levelHeight;
+
+	bool reachedExit;
 };
 #endif

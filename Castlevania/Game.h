@@ -4,9 +4,18 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include "Player.h"
-#include "Timer.h"
 #include <stdio.h>
 #include <string>
+#include <vector>
+
+enum GameState
+{
+	Title,
+	Intro,
+	Fade,
+	Running,
+	GameOver
+};
 
 class Game
 {
@@ -15,12 +24,17 @@ public:
 	Game();
 	~Game();	
 
-	void HandleEvents();
-	void Render();
-	void Update();	
+	void HandleGameState();
+	void Update();
+	void Render();	
 	bool isRunning();
 
-	Timer gameTime;
+	void DrawHUD();
+
+	void LoadAssets();	
+
+	void RunTitle();
+	void RunIntro();
 
 private:
 
@@ -29,6 +43,9 @@ private:
 	const int SCREEN_WIDTH = 512;
 	const int SCREEN_HEIGHT = 448;	
 	const int FPS = 60;
+
+	int fadeTime;
+	bool fadeDone;
 };
 
 

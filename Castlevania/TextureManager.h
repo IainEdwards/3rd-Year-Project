@@ -18,10 +18,6 @@ public:
 	SDL_Rect drawFrame(std::string id, int x, int y, int width, int height, int currentRow, int currentFrame, SDL_Renderer* renderer, SDL_RendererFlip flip);
 
 	std::map<std::string, SDL_Texture*> textureMap;
-
-
-private:
-
 };
 
 

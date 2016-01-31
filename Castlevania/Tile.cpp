@@ -1,7 +1,7 @@
 #include "Tile.h"
 
 
-Tile::Tile(int x, int y, int tileType)
+Tile::Tile(int x, int y, char tileType)
 {
 	//Get the offsets
 	tileBox.x = x;
@@ -28,7 +28,7 @@ Tile::Tile(int x, int y, int tileType)
 //	}
 //}
 
-int Tile::Type()
+char Tile::Type()
 {
 	return type;
 }
