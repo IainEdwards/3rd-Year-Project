@@ -210,12 +210,27 @@ bool Level::setTiles(std::string levelName)
 		switch (tileType)
 		{
 		case '0':
+			//empty tile
 			levelTiles[i] = new Tile(x, y, tileType);
 			break;
 		case '1':
+			//floor or wall tile
 			levelTiles[i] = new Tile(x, y, tileType);
 			break;
 		case '2':
+			//platform tile
+			levelTiles[i] = new Tile(x, y, tileType);
+			break;
+		case 'R':
+			//Stair tiles going right and up
+			levelTiles[i] = new Tile(x - 16, y, tileType);
+			break;
+		case 'L':
+			//Stair tiles going left and up
+			levelTiles[i] = new Tile(x + 16, y, tileType);
+			break;
+		case 'S':
+			//Special case, platform next to top of stair
 			levelTiles[i] = new Tile(x, y, tileType);
 			break;
 		case 'G':			
@@ -224,11 +239,13 @@ bool Level::setTiles(std::string levelName)
 			levelTiles[i] = new Tile(x, y, '0');
 			break;
 		case 'P':
+			//Player spawnpoint
 			spawnPointX = x - 12;
 			spawnPointY = y;
 			levelTiles[i] = new Tile(x, y, '0');
 			break;
 		case 'X':
+			//Level exit
 			levelTiles[i] = new Tile(x, y, 'X');
 			break;
 			

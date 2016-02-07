@@ -9,13 +9,13 @@
 #include "TextureManager.h"
 #include "SoundManager.h"
 
-GameState gameState = GameState::Title;
+GameState gameState = GameState::Fade;
 
 TextureManager *tm = new TextureManager();
 SoundManager *sm = new SoundManager();
 
 Level levels[3];
-int levelN = 0;
+int levelN = 1;
 
 int health, lives, ammo, stage, bosshealth;
 int totalScore, levelScore, prevScore;

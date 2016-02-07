@@ -24,6 +24,12 @@ Player::Player()
 	rightPress = false;
 	attacking = false;
 	crouching = false;
+	goToStairs = false;
+	onStairs = false;
+	moveUp = false;
+	moveDown = false;
+	rightStair = false;
+	leftStair = false;
 	reachedExit = false;
 
 	frameTime = 0;
@@ -95,7 +101,10 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 			break;	
 
 		case SDLK_DOWN:
-			crouching = true;
+			if (!onStairs)
+				crouching = true;
+			
+			moveDown = true;
 			break;
 
 		case SDLK_x: 
@@ -108,6 +117,7 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				velY = JumpVelocity;
 			}			
 			break;
+
 		case SDLK_z:
 			if (!jumping && !attacking && !crouching)
 			{				
@@ -143,8 +153,19 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				attacking = true;
 				attackTime = 60;
 			}
+			break;
+
+		case SDLK_UP:
+			if (!onStairs)
+				goToStairs = true;
+			else
+				goToStairs = false;
+			
+			moveUp = true;
+
 		}
 	}
+	//When a key is released
 	else if (e.type == SDL_KEYUP && e.key.repeat == 0)
 	{		
 		switch (e.key.keysym.sym)
@@ -158,15 +179,24 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 			break;
 
 		case SDLK_DOWN:
-			crouching = false;
+			if (!onStairs)
+				crouching = false;
+
+			moveDown = false;
 			break;
+
+		case SDLK_UP:
 			
+			goToStairs = false;		
+			moveUp = false;
+			break;
 		}
 	}
 }
 
 void Player::ApplyPhysics(Tile *tiles[])
 {
+
 	//Apply physics from key presses and set animation
 	frameTime++;
 
@@ -183,129 +213,210 @@ void Player::ApplyPhysics(Tile *tiles[])
 	if (velX < 0)
 		flip = true;
 
-	if (jumping)
+	if (!goToStairs && !onStairs)
 	{
-		jumpTime--;
-		if (jumpTime <= 30 && !attacking)
-		{
-			currentAnimation = IDLE;
-			velY += 0.7f;
-		}
-	}
 
-	if (attacking)
-	{
-		attackTime--;
-		if (attackTime <= 36)
+		if (jumping)
 		{
-			attacking = false;
-			currentAnimation = IDLE;
-		}
-
-		if (attackTime <= 48)
-		{
-			if (!flip)
+			jumpTime--;
+			if (jumpTime <= 30 && !attacking)
 			{
-				if (!crouching || jumping)
-				{
-					attackBox.x = playerBox.x + PLAYER_WIDTH + 12;
-					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
-					attackBox.w = 44;
-					attackBox.h = 16;
-				}
-				else
-				{
-					attackBox.x = playerBox.x + PLAYER_WIDTH + 12;
-					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2);
-					attackBox.w = 44;
-					attackBox.h = 16;
-				}				
+				currentAnimation = IDLE;
+				velY += 0.7f;
 			}
-			else
-			{
-				if (!crouching || jumping)
-				{
-					attackBox.x = playerBox.x - 56;
-					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
-					attackBox.w = 44;
-					attackBox.h = 16;
-				}
-				else
-				{
-					attackBox.x = playerBox.x - 56;
-					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2);
-					attackBox.w = 44;
-					attackBox.h = 16;
-				}				
-			}
-		}		
-	}
-	else
-	{
-		attackBox = { 0, 0, 0, 0 };
-	}
-
-	if (!jumping && !attacking && !crouching)
-	{
-		velY += 0.7f;
-
-		if (rightPress && !leftPress)
-		{
-			velX = MoveSpeed;
-			currentAnimation = MOVING;
 		}
 
-		if (!rightPress && leftPress)
-		{
-			velX = 0 - MoveSpeed;
-			currentAnimation = MOVING;
-		}
-
-		if (!rightPress && !leftPress)
-		{
-			velX = 0;
-			currentAnimation = IDLE;
-		}
-
-		if (rightPress && leftPress)
-		{
-			velX = 0;
-			currentAnimation = IDLE;
-		}
-	}
-
-	if (crouching && !attacking && !jumping)
-	{
-		velX = 0;
-		currentAnimation = CROUCHING;
-	}
-	velY += GravityAcceleration;
-
-	playerBox.x += (int)round(velX);	
-
-	//If the player reaches a wall
-	if ((playerBox.x < 0) || (playerBox.x + PLAYER_WIDTH > levelWidth) || touchesWall(playerBox, tiles))
-	{
-		//Move back
-		playerBox.x -= (int)round(velX);
-	}
-
-	//Move the player up or down
-	playerBox.y += (int)round(velY);	
-
-	//If the player touches floor or roof
-	if ((playerBox.y < 0) || (playerBox.y + PLAYER_HEIGHT > levelHeight) || touchesWall(playerBox, tiles))
-	{
-		//Move back
-		playerBox.y -= (int)round(velY);
-		jumping = false;
-		onGround = true;
-		velY = 0;
 		if (attacking)
+		{
+			attackTime--;
+			if (attackTime <= 36)
+			{
+				attacking = false;
+				currentAnimation = IDLE;
+			}
+
+			if (attackTime <= 48)
+			{
+				if (!flip)
+				{
+					if (!crouching || jumping)
+					{
+						attackBox.x = playerBox.x + PLAYER_WIDTH + 12;
+						attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
+						attackBox.w = 44;
+						attackBox.h = 16;
+					}
+					else
+					{
+						attackBox.x = playerBox.x + PLAYER_WIDTH + 12;
+						attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2);
+						attackBox.w = 44;
+						attackBox.h = 16;
+					}
+				}
+				else
+				{
+					if (!crouching || jumping)
+					{
+						attackBox.x = playerBox.x - 56;
+						attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
+						attackBox.w = 44;
+						attackBox.h = 16;
+					}
+					else
+					{
+						attackBox.x = playerBox.x - 56;
+						attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2);
+						attackBox.w = 44;
+						attackBox.h = 16;
+					}
+				}
+			}
+		}
+		else
+		{
+			attackBox = { 0, 0, 0, 0 };
+		}
+
+		if (!jumping && !attacking && !crouching)
+		{
+			velY += 0.7f;
+
+			if (rightPress && !leftPress)
+			{
+				velX = MoveSpeed;
+				currentAnimation = MOVING;
+			}
+
+			if (!rightPress && leftPress)
+			{
+				velX = 0 - MoveSpeed;
+				currentAnimation = MOVING;
+			}
+
+			if (!rightPress && !leftPress)
+			{
+				velX = 0;
+				currentAnimation = IDLE;
+			}
+
+			if (rightPress && leftPress)
+			{
+				velX = 0;
+				currentAnimation = IDLE;
+			}
+		}
+
+		if (crouching && !attacking && !jumping)
+		{
 			velX = 0;
+			currentAnimation = CROUCHING;
+		}
+		velY += GravityAcceleration;
+
+		playerBox.x += (int)round(velX);
+
+		//If the player reaches a wall
+		if ((playerBox.x < 0) || (playerBox.x + PLAYER_WIDTH > levelWidth) || touchesWall(playerBox, tiles))
+		{
+			//Move back
+			playerBox.x -= (int)round(velX);
+		}
+
+		//Move the player up or down
+		playerBox.y += (int)round(velY);
+
+		//If the player touches floor or roof
+		if ((playerBox.y < 0) || (playerBox.y + PLAYER_HEIGHT > levelHeight) || touchesWall(playerBox, tiles))
+		{
+			//Move back
+			playerBox.y -= (int)round(velY);
+			jumping = false;
+			onGround = true;
+			velY = 0;
+			if (attacking)
+				velX = 0;
+		}
+		else
+			onGround = false;
 	}
-	else
-		onGround = false;
+
+
+	//Stairs
+	if (onStairs)
+		goToStairs = false;
+
+	if (goToStairs)
+	{
+		moveToStairs(playerBox, tiles);
+	}	
+
+	//Check to move into position to go down stairs
+	if (crouching && touchesStairs(playerBox, tiles, true))
+	{
+		moveToStairsDown(playerBox, tiles);
+	}
+
+	if (onStairs)
+	{
+		if (rightStair)
+		{
+			if (moveUp && !moveDown || rightPress)
+			{
+				playerBox.y -= 1;
+				playerBox.x += 1;
+			}
+			if (!moveUp && moveDown || leftPress)
+			{
+				playerBox.y += 1;
+				playerBox.x -= 1;
+			}
+		}
+		if (leftStair)
+		{
+			if (!moveUp && moveDown || rightPress)
+			{
+				playerBox.y += 1;
+				playerBox.x += 1;
+			}
+			if (moveUp && !moveDown || leftPress)
+			{
+				playerBox.y -= 1;
+				playerBox.x -= 1;
+			}
+		}
+		
+	}
+
+	//Stop stair movement if player reaches top of stairs
+	if (onStairs && !touchesStairs(playerBox, tiles, false))
+	{
+		onStairs = false;	
+		rightStair = false;
+		leftStair = false;
+	}
+
+	//Stop stair movement when player reaches floor
+	if (onStairs && touchesWall(playerBox, tiles))
+	{
+		if (rightStair)
+		{
+			if (moveDown && !moveUp || leftPress)
+			{
+				onStairs = false;				
+				playerBox.y -= 1;
+			}
+		}	
+		if (leftStair)
+		{
+			if (moveDown && !moveUp || rightPress)
+			{
+				onStairs = false;
+				playerBox.y -= 1;
+			}
+		}
+	}
+
 }
 
 bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
@@ -335,6 +446,21 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 			}
 		}
 
+		//Special case, if tile is next to top of stairs on a platform
+		if (tiles[i]->Type() == 'S')
+		{
+			if ((box.y + 4) <= tiles[i]->Box().y)
+			{
+				if (checkCollision(box, tiles[i]->Box()))
+				{					
+					if (!onStairs)
+						return true;
+					else
+						return false;
+				}
+			}
+		}
+
 		//If the tile is the exit
 		if (tiles[i]->Type() == 'X')
 		{
@@ -347,6 +473,157 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 
 	//If no wall tiles were touched
 	return false;
+}
+
+bool Player::touchesStairs(SDL_Rect box, Tile* tiles[], bool goDown)
+{
+	if (!goDown)
+	{
+		for (int i = 0; i < totalTiles; ++i)
+		{
+			if (tiles[i]->Type() == 'R')
+			{
+
+				if (checkCollision(box, tiles[i]->Box()))
+				{
+					rightStair = true;
+					leftStair = false;
+					return true;
+				}
+			}
+			if (tiles[i]->Type() == 'L')
+			{
+				if (checkCollision(box, tiles[i]->Box()))
+				{
+					rightStair = false;
+					leftStair = true;
+					return true;
+				}
+			}
+		}
+	}
+	else if (goDown)
+	{
+		for (int i = 0; i < totalTiles; ++i)
+		{
+			if (tiles[i]->Type() == 'R')
+			{
+				Tile* tempTile = new Tile(tiles[i]->Box().x + 32, tiles[i]->Box().y - 16, 'R');
+				if (tiles[i]->Box().y >= (box.y + box.h))
+				{
+					if (checkCollision(box, tempTile->Box()))
+					{
+						rightStair = true;
+						leftStair = false;
+						return true;
+					}
+				}
+			}
+			if (tiles[i]->Type() == 'L')
+			{
+				Tile* tempTile = new Tile(tiles[i]->Box().x - 32, tiles[i]->Box().y - 16, 'R');
+				if (tiles[i]->Box().y >= (box.y + box.h))
+				{
+					if (checkCollision(box, tempTile->Box()))
+					{
+						leftStair = true;
+						rightStair = false;
+						return true;
+					}
+				}
+			}
+		}
+
+	}
+	
+	return false;
+}
+
+void Player::moveToStairs(SDL_Rect box, Tile* tiles[])
+{
+	int playerRight = box.x + box.w;
+	int playerLeft = box.x;
+	int playerBase = box.y + box.h;
+
+	//Go through the tiles
+	for (int i = 0; i < totalTiles; ++i)
+	{		
+		if (tiles[i]->Type() == 'R' || tiles[i]->Type() == 'L')
+		{
+			if (playerBase == (tiles[i]->Box().y + tiles[i]->Box().h))
+			{
+				if (playerRight > tiles[i]->Box().x && playerRight < (tiles[i]->Box().x + tiles[i]->Box().w))
+				{
+					playerBox.x += 1;
+				}
+				if (playerLeft > tiles[i]->Box().x && playerLeft < (tiles[i]->Box().x + tiles[i]->Box().w))
+				{
+					playerBox.x -= 1;
+				}
+				if (playerLeft == tiles[i]->Box().x)
+				{
+					onStairs = true;	
+				
+				}
+			}			
+		}
+		
+	}	
+}
+
+void Player::moveToStairsDown(SDL_Rect box, Tile* tiles[])
+{
+	int playerRight = box.x + box.w;
+	int playerLeft = box.x;	
+
+	for (int i = 0; i < totalTiles; ++i)
+	{
+		if (tiles[i]->Type() == 'R')
+		{
+			Tile* tempTile = new Tile(tiles[i]->Box().x + 32, tiles[i]->Box().y - 16, 'R');
+
+			if (playerRight > tempTile->Box().x && playerRight < (tempTile->Box().x + tempTile->Box().w))
+			{
+				//Not exactly sure why this works, I assume it needs to override a movement the other way
+				playerBox.x += 2;
+			}
+			if (playerLeft > tempTile->Box().x && playerLeft < (tempTile->Box().x + tempTile->Box().w))
+			{
+				playerBox.x -= 1;
+			}
+			if (playerLeft == tempTile->Box().x)
+			{
+				onStairs = true;
+				rightStair = true;
+				leftStair = false;
+				playerBox.x -= 1;
+				playerBox.y += 1;
+				crouching = false;
+			}
+		}
+		if (tiles[i]->Type() == 'L')
+		{
+			Tile* tempTile = new Tile(tiles[i]->Box().x - 32, tiles[i]->Box().y - 16, 'L');
+
+			if (playerRight > tempTile->Box().x && playerRight < (tempTile->Box().x + tempTile->Box().w))
+			{				
+				playerBox.x += 1;
+			}
+			if (playerLeft > tempTile->Box().x && playerLeft < (tempTile->Box().x + tempTile->Box().w))
+			{
+				playerBox.x -= 2;
+			}
+			if (playerLeft == tempTile->Box().x)
+			{
+				onStairs = true;
+				leftStair = true;
+				rightStair = false;
+				playerBox.x += 1;
+				playerBox.y += 1;
+				crouching = false;
+			}
+		}
+	}
 }
 
 bool Player::checkCollision(SDL_Rect a, SDL_Rect b)
@@ -426,9 +703,7 @@ void Player::Reset(int x, int y)
 {
 	playerBox.x = x;
 	playerBox.y = y;
-	velX = velY = 0;
-	//posX = x;
-	//posY = y;
+	velX = velY = 0;	
 }
 
 void Player::Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount)

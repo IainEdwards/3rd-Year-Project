@@ -1,14 +1,8 @@
-﻿Build started 31/01/2016 23:13:56.
+﻿Build started 07/02/2016 22:39:13.
      1>Project "C:\Users\Iain\Documents\Projects\Castlevania\Castlevania\Castlevania.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Enemy.cpp Game.cpp Level.cpp
-         Enemy.cpp
-     1>c:\users\iain\documents\projects\castlevania\castlevania\enemy.cpp(60): warning C4244: '+=' : conversion from 'float' to 'int', possible loss of data
-         Generating Code...
-         Compiling...
-         Level.cpp
-         Game.cpp
-         Generating Code...
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Player.cpp
+         Player.cpp
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Iain\Documents\Projects\Castlevania\Debug\Castlevania.exe" /INCREMENTAL /NOLOGO SDL2.lib SDL2main.lib SDL2_image.lib SDL2_mixer.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Iain\Documents\Projects\Castlevania\Debug\Castlevania.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Iain\Documents\Projects\Castlevania\Debug\Castlevania.lib" /MACHINE:X86 Debug\Enemy.obj
          Debug\Game.obj
@@ -23,4 +17,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:02.62
+Time Elapsed 00:00:00.97

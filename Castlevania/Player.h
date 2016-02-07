@@ -36,6 +36,12 @@ public:
 
 	bool touchesWall(SDL_Rect box, Tile* tiles[]);	
 
+	bool touchesStairs(SDL_Rect box, Tile* tiles[], bool goDown);
+
+	void moveToStairs(SDL_Rect box, Tile* tiles[]);
+
+	void moveToStairsDown(SDL_Rect box, Tile* tiles[]);	
+
 	bool checkCollision(SDL_Rect a, SDL_Rect b);	
 
 	void Reset(int x, int y);
@@ -107,6 +113,13 @@ private:
 	int attackTime;
 
 	bool crouching;
+
+	bool goToStairs;
+	bool onStairs;
+	bool moveUp;
+	bool moveDown;
+	bool rightStair;
+	bool leftStair;	
 
 	int totalTiles;
 	int levelWidth;
