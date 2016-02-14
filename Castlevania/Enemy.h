@@ -38,6 +38,8 @@ public:
 	int PosX();
 	int PosY();
 
+	EnemyType Type();
+
 	bool Flip();
 
 	void setEnemy(int x, int y, EnemyType type);
@@ -47,8 +49,7 @@ public:
 	int HitPoints();
 	void takeHit();
 
-	int getCooldown();
-	void beginCooldown();
+	int getCooldown();	
 
 private:
 

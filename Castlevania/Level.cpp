@@ -78,12 +78,20 @@ void Level::UpdateLevel(SDL_Rect& camera)
 	while (it != enemies.end())
 	{
 		it->ApplyPhysics();
+
+		if (checkCollision(player.PlayerBox(), it->EnemyBox()))
+		{
+			if (player.HitCooldown() <= 0)
+			{
+				player.takeHit(it->Type());
+			}
+		}
+
 		if (checkCollision(player.AttackBox(), it->EnemyBox()))
 		{
 			if (it->getCooldown() <= 0)
 			{
-				it->takeHit();
-				it->beginCooldown();
+				it->takeHit();					
 				if (it->HitPoints() <= 0)
 				{
 					it = enemies.erase(it);
@@ -94,50 +102,6 @@ void Level::UpdateLevel(SDL_Rect& camera)
 		else
 			it++;
 	}
-
-	/*for (it = enemies.begin(); it != enemies.end(); it++)
-	{
-		it->ApplyPhysics();
-
-		if (checkCollision(player.AttackBox(), it->EnemyBox()))
-		{
-			if (it->getCooldown() <= 0)
-			{
-				it->takeHit();
-				it->beginCooldown();
-				if (it->HitPoints() <= 0)
-				{
-					enemies.erase(it);
-					score += 100;
-				}
-			}			
-		}
-	}*/
-
-	//Update enemies, including hits from player
-	//for (int i = 0; i < enemies.size(); i++)
-	//{
-	//	enemies[i].ApplyPhysics();		
-
-	//	if (checkCollision(player.AttackBox(), enemies[i].EnemyBox()))
-	//	{
-	//		//if (enemies[i].getCooldown() <= 0)
-	//		//{
-	//			enemies[i].takeHit();
-	//			//enemies[i].beginCooldown();
-	//			if (enemies[i].HitPoints() <= 0)
-	//			{
-	//				enemies.erase(enemies.begin() + i);
-	//				score += 100;					
-	//			}					
-	//		//}			
-	//	}
-
-	//	if (enemies[i].PosX() <= 0)
-	//	{
-	//		enemies.erase(enemies.begin() + i);		
-	//	}
-	//}
 
 	player.ApplyPhysics(levelTiles);
 

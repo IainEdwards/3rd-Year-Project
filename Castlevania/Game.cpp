@@ -30,7 +30,7 @@ Mix_Music* music = NULL;
 //Variables for title
 float frameTime;
 int frameCount, frameRow;
-int titleTime, titleCount;
+int titleTime, titleCount, titleFrame;
 int introTime;
 bool enterPressed = false;
 
@@ -64,6 +64,7 @@ Game::Game()
 	//Allow game loop to start running
 	running = true;
 
+	//Load various textures
 	LoadAssets();	
 
 	//Initialise the camera
@@ -111,7 +112,7 @@ void Game::HandleGameState()
 			levelScore = 0;
 			prevScore = totalScore;
 			ammo = 5;
-			lives = 3;
+			levels[levelN].player.SetHealth(16);
 			stage = 1;
 			bosshealth = 16;
 			gameState = GameState::Running;
@@ -199,11 +200,16 @@ void Game::Render()
 
 		//Draw Title screen and animated bat, text flashes on enter
 		tm->draw("title", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, renderer, SDL_FLIP_NONE);
-
-		tm->drawFrame("titlebat2", 368, 192, 144, 112, frameRow, frameCount, renderer, SDL_FLIP_NONE);	
+		
+		if (!enterPressed)
+			tm->drawFrame("titlebat2", 368, 192, 144, 112, frameRow, frameCount, renderer, SDL_FLIP_NONE);	
 
 		if (enterPressed)
-			tm->drawFrame("titlecover", 145, 255, 224, 16, 1, titleCount, renderer, SDL_FLIP_NONE);		
+		{
+			tm->drawFrame("titlebat2", 368, 192, 144, 112, frameRow, titleFrame, renderer, SDL_FLIP_NONE);
+			tm->drawFrame("titlecover", 145, 255, 224, 16, 1, titleCount, renderer, SDL_FLIP_NONE);
+		}
+				
 
 		break;
 
@@ -280,7 +286,7 @@ void Game::DrawHUD()
 	tm->drawFrame("numbers", 481, 15, 16, 16, 1, stage % 10, renderer, SDL_FLIP_NONE);
 
 	//Draw health
-	for (int i = 0; i < health; i++)
+	for (int i = 0; i < levels[levelN].player.Health(); i++)
 		tm->draw("health", 112 + i * 8, 34, 8, 12, renderer, SDL_FLIP_NONE);
 
 	//Draw bosshealth
@@ -342,6 +348,7 @@ void Game::RunTitle()
 		{
 			titleTime = 0;
 			enterPressed = true;
+			titleFrame = frameCount;
 		}
 	}
 	frameTime++;

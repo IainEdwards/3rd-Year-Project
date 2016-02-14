@@ -1,6 +1,6 @@
 #include "Player.h"
 
-const float Player::MoveSpeed = 2.0f;
+const int Player::MoveSpeed = 2;
 const float Player::GravityAcceleration = 0.3f;
 const float Player::JumpVelocity = -6.5f;
 
@@ -14,7 +14,8 @@ Player::Player()
 	playerBox.h = PLAYER_HEIGHT;
 	attackBox.w = 48;
 	attackBox.h = 16;
-	velX = velY = 0;	
+	velX = 0;	
+	velY = 0.0f;
 	flip = false;
 	jumping = false;
 	jumpTime = 0;
@@ -26,10 +27,20 @@ Player::Player()
 	crouching = false;
 	goToStairs = false;
 	onStairs = false;
-	moveUp = false;
-	moveDown = false;
+	upPress = false;
+	downPress = false;
 	rightStair = false;
 	leftStair = false;
+	stepFrame = 0;
+	stepTime = 0;
+	secondStep = 0;
+	stepUp = false;
+	cameraStep = 0;
+	cameraStart = 0;
+	health = 0;
+	lives = 0;
+	hitCooldown = 0;
+	damaged = false;
 	reachedExit = false;
 
 	frameTime = 0;
@@ -45,6 +56,11 @@ void Player::Load(TextureManager* tm, SDL_Renderer* renderer, SoundManager* sm)
 	tm->load("Assets/Sprites/Player/player_whip1.png", "player_whip1", renderer);
 	tm->load("Assets/Sprites/Player/player_crouching.png", "player_crouching", renderer);
 	tm->load("Assets/Sprites/Player/player_crouch_whip1.png", "player_crouch_whip1", renderer);	
+	tm->load("Assets/Sprites/Player/player_stairs_up.png", "player_stairs_up", renderer);
+	tm->load("Assets/Sprites/Player/player_stairs_down.png", "player_stairs_down", renderer);	
+	tm->load("Assets/Sprites/Player/player_stairs_up_attack.png", "player_stairs_up_attack", renderer);
+	tm->load("Assets/Sprites/Player/player_stairs_down_attack.png", "player_stairs_down_attack", renderer);
+	tm->load("Assets/Sprites/Player/player_damaged.png", "player_damaged", renderer);
 
 	sm->load("Assets/Sounds/whip1.wav", "whip1");	
 	sm->setVolume("whip1", 32);
@@ -63,6 +79,21 @@ int Player::PosY()
 bool Player::Flip()
 {
 	return flip;
+}
+
+int Player::Health()
+{
+	return health;
+}
+
+void Player::SetHealth(int value)
+{
+	health = value;
+}
+
+int Player::HitCooldown()
+{
+	return hitCooldown;
 }
 
 PlayerAnimation Player::Animation()
@@ -104,7 +135,7 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 			if (!onStairs)
 				crouching = true;
 			
-			moveDown = true;
+			downPress = true;
 			break;
 
 		case SDLK_x: 
@@ -119,7 +150,7 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 			break;
 
 		case SDLK_z:
-			if (!jumping && !attacking && !crouching)
+			if (!jumping && !attacking && !crouching && !onStairs && !damaged)
 			{				
 				sm->play("whip1");
 				currentFrame = 0;
@@ -128,7 +159,7 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				attackTime = 60;
 				velX = 0;
 			}
-			else if (jumping && !attacking && !crouching)
+			else if (jumping && !attacking && !crouching && !onStairs && !damaged)
 			{				
 				sm->play("whip1");
 				currentFrame = 0;
@@ -136,7 +167,7 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				attacking = true;
 				attackTime = 60;
 			}
-			else if (!jumping && !attacking && crouching)
+			else if (!jumping && !attacking && crouching && !onStairs && !damaged)
 			{				
 				sm->play("whip1");
 				currentFrame = 0;
@@ -145,7 +176,7 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				attackTime = 60;
 				velX = 0;
 			}
-			else if (jumping && !attacking && crouching)
+			else if (jumping && !attacking && crouching && !onStairs && !damaged)
 			{				
 				sm->play("whip1");
 				currentFrame = 0;
@@ -153,15 +184,40 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				attacking = true;
 				attackTime = 60;
 			}
+			else if (onStairs && !attacking && secondStep <= 0)
+			{
+				sm->play("whip1");
+				currentFrame = 0;				
+				attacking = true;
+				attackTime = 60;
+
+				if (rightStair && !flip)
+				{
+					currentAnimation = STAIRS_UP_ATTACK;
+				}
+				else if (rightStair && flip)
+				{
+					currentAnimation = STAIRS_DOWN_ATTACK;
+				}
+				else if (leftStair && flip)
+				{
+					currentAnimation = STAIRS_UP_ATTACK;
+				}
+				else if (leftStair && !flip)
+				{
+					currentAnimation = STAIRS_DOWN_ATTACK;
+				}
+			}
 			break;
 
 		case SDLK_UP:
+			currentAnimation = IDLE;
 			if (!onStairs)
 				goToStairs = true;
 			else
 				goToStairs = false;
 			
-			moveUp = true;
+			upPress = true;
 
 		}
 	}
@@ -182,24 +238,23 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 			if (!onStairs)
 				crouching = false;
 
-			moveDown = false;
+			downPress = false;
 			break;
 
 		case SDLK_UP:
 			
 			goToStairs = false;		
-			moveUp = false;
+			upPress = false;
 			break;
 		}
 	}
 }
 
+//Apply physics from key presses and set animation
 void Player::ApplyPhysics(Tile *tiles[])
-{
-
-	//Apply physics from key presses and set animation
+{	
+	//Set frames for animations
 	frameTime++;
-
 	if (60 / frameTime <= 6)
 	{
 		frameTime = 0;
@@ -208,20 +263,38 @@ void Player::ApplyPhysics(Tile *tiles[])
 			currentFrame = 0;
 	}
 
-	if (velX > 0)
-		flip = false;
-	if (velX < 0)
-		flip = true;
+	//Reduce hit cooldown so player can take damage again
+	hitCooldown--;
 
+	if (hitCooldown <= 0)
+		damaged = false;
+
+	if (!attacking)
+		attackBox = { 0, 0, 0, 0 };
+
+	//Set flip for animations
+	if (!onStairs && hitCooldown <= 80)
+	{
+		if (velX > 0)
+			flip = false;
+		if (velX < 0)
+			flip = true;
+	}
+
+	//Apply physics and set animations for when not on stairs
 	if (!goToStairs && !onStairs)
 	{
-
 		if (jumping)
 		{
 			jumpTime--;
-			if (jumpTime <= 30 && !attacking)
+			if (jumpTime <= 30 && !attacking && !damaged)
 			{
 				currentAnimation = IDLE;
+				velY += 0.7f;
+			}
+			else if (jumpTime <= 30 && !attacking && damaged)
+			{
+				currentAnimation = DAMAGED;
 				velY += 0.7f;
 			}
 		}
@@ -272,11 +345,7 @@ void Player::ApplyPhysics(Tile *tiles[])
 					}
 				}
 			}
-		}
-		else
-		{
-			attackBox = { 0, 0, 0, 0 };
-		}
+		}		
 
 		if (!jumping && !attacking && !crouching)
 		{
@@ -314,13 +383,13 @@ void Player::ApplyPhysics(Tile *tiles[])
 		}
 		velY += GravityAcceleration;
 
-		playerBox.x += (int)round(velX);
+		playerBox.x += velX;
 
 		//If the player reaches a wall
 		if ((playerBox.x < 0) || (playerBox.x + PLAYER_WIDTH > levelWidth) || touchesWall(playerBox, tiles))
 		{
 			//Move back
-			playerBox.x -= (int)round(velX);
+			playerBox.x -= velX;
 		}
 
 		//Move the player up or down
@@ -336,64 +405,217 @@ void Player::ApplyPhysics(Tile *tiles[])
 			velY = 0;
 			if (attacking)
 				velX = 0;
+
+			if (damaged && hitCooldown > 80)
+			{
+				crouching = true;
+			}
+				
+			if (damaged && hitCooldown <= 80 && !downPress)
+				crouching = false;
+			
 		}
 		else
 			onGround = false;
 	}
-
-
-	//Stairs
+	
+	//Apply physics and set animatons for when on stairs
 	if (onStairs)
 		goToStairs = false;
 
 	if (goToStairs)
-	{
+	{		
 		moveToStairs(playerBox, tiles);
 	}	
 
 	//Check to move into position to go down stairs
 	if (crouching && touchesStairs(playerBox, tiles, true))
 	{
+		currentAnimation = MOVING;
 		moveToStairsDown(playerBox, tiles);
 	}
 
-	if (onStairs)
+	//Movement for when on stairs, different for right and left stairs
+	if (onStairs && !attacking)
 	{
+		secondStep--;
+
 		if (rightStair)
 		{
-			if (moveUp && !moveDown || rightPress)
-			{
-				playerBox.y -= 1;
-				playerBox.x += 1;
+			if (secondStep == 0 && stepUp)
+			{				
+				takeStep(true, true);
+				stepFrame = 0;				
 			}
-			if (!moveUp && moveDown || leftPress)
-			{
-				playerBox.y += 1;
-				playerBox.x -= 1;
+
+			if (secondStep == 0 && !stepUp)
+			{				
+				takeStep(false, false);
+				stepFrame = 0;				
 			}
+
+			if (upPress && !downPress && !leftPress || rightPress && !leftPress && !downPress)
+			{
+				currentAnimation = STAIRS_UP;
+				flip = false;				
+				stepTime++;		
+
+				if (stepTime % 16 == 0)
+				{
+					secondStep = 8;
+					stepUp = true;
+					takeStep(true, true);
+					stepFrame = 1;	
+				}					
+			}		
+			if (!upPress && downPress && !rightPress || leftPress && !rightPress && !upPress)
+			{				
+				currentAnimation = STAIRS_DOWN;
+				flip = true;
+				stepTime++;
+
+				if (stepTime % 16 == 0)
+				{
+					secondStep = 8;
+					stepUp = false;
+					takeStep(false, false);
+					stepFrame = 1;
+				}			
+			}						
 		}
 		if (leftStair)
 		{
-			if (!moveUp && moveDown || rightPress)
+			if (secondStep == 0 && stepUp)
 			{
-				playerBox.y += 1;
-				playerBox.x += 1;
+				stepFrame++;
+				takeStep(true, false);
+				if (stepFrame >= 2)
+					stepFrame = 0;
 			}
-			if (moveUp && !moveDown || leftPress)
+
+			if (secondStep == 0 && !stepUp)
 			{
-				playerBox.y -= 1;
-				playerBox.x -= 1;
+				stepFrame++;
+				takeStep(false, true);
+				if (stepFrame >= 2)
+					stepFrame = 0;
 			}
-		}
-		
+
+			if (upPress && !downPress && !rightPress || leftPress && !rightPress && !downPress)
+			{
+				currentAnimation = STAIRS_UP;
+				flip = true;
+				stepTime++;		
+				stepUp = true;
+
+				if (stepTime % 16 == 0)
+				{
+					secondStep = 8;
+					stepFrame++;
+					takeStep(true, false);
+					if (stepFrame >= 2)
+						stepFrame = 0;
+				}			
+			}
+			if (!upPress && downPress && !leftPress || rightPress && !leftPress && !upPress)
+			{
+				currentAnimation = STAIRS_DOWN;
+				flip = false;
+				stepTime++;
+				stepUp = false;
+
+				if (stepTime % 16 == 0)
+				{		
+					secondStep = 8;
+					stepFrame++;
+					takeStep(false, true);
+					if (stepFrame >= 2)
+						stepFrame = 0;
+				}		
+			}
+		}		
 	}
 
+	if (onStairs && attacking)
+	{
+		attackTime--;
+
+		if (rightStair)
+		{			
+			if (attackTime <= 36)
+			{
+				attacking = false;
+				
+				if (!flip)
+					currentAnimation = STAIRS_UP;
+				else if (flip)
+					currentAnimation = STAIRS_DOWN;
+			}
+
+			if (attackTime <= 48)
+			{
+				if (!flip)
+				{
+					attackBox.x = playerBox.x + PLAYER_WIDTH + 12;
+					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
+					attackBox.w = 44;
+					attackBox.h = 16;
+				}
+				else if (flip)
+				{
+					attackBox.x = playerBox.x - 56;
+					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
+					attackBox.w = 44;
+					attackBox.h = 16;
+				}				
+			}
+		}	
+		if (leftStair)
+		{
+			if (attackTime <= 36)
+			{
+				attacking = false;
+
+				if (!flip)
+					currentAnimation = STAIRS_DOWN;
+				else if (flip)
+					currentAnimation = STAIRS_UP;
+			}
+
+			if (attackTime <= 48)
+			{
+				if (!flip)
+				{
+					attackBox.x = playerBox.x + PLAYER_WIDTH + 12;
+					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
+					attackBox.w = 44;
+					attackBox.h = 16;
+				}
+				else if (flip)
+				{
+					attackBox.x = playerBox.x - 56;
+					attackBox.y = playerBox.y + (PLAYER_HEIGHT / 2) - 16;
+					attackBox.w = 44;
+					attackBox.h = 16;
+				}
+			}
+		}
+	}
+	
 	//Stop stair movement if player reaches top of stairs
 	if (onStairs && !touchesStairs(playerBox, tiles, false))
 	{
-		onStairs = false;	
-		rightStair = false;
-		leftStair = false;
+		if (rightStair)
+		{
+			onStairs = false;				
+			playerBox.x -= 8;
+		}
+		if (leftStair)
+		{
+			onStairs = false;				
+			playerBox.x += 8;
+		}
+		
 	}
 
 	//Stop stair movement when player reaches floor
@@ -401,22 +623,34 @@ void Player::ApplyPhysics(Tile *tiles[])
 	{
 		if (rightStair)
 		{
-			if (moveDown && !moveUp || leftPress)
+			if (downPress || leftPress)
 			{
 				onStairs = false;				
-				playerBox.y -= 1;
+				playerBox.y -= 8;	
+				playerBox.x += 8;				
 			}
 		}	
 		if (leftStair)
 		{
-			if (moveDown && !moveUp || rightPress)
+			if (downPress || rightPress)
 			{
-				onStairs = false;
-				playerBox.y -= 1;
+				onStairs = false;				
+				playerBox.y -= 8;	
+				playerBox.x -= 8;				
 			}
 		}
 	}
-
+	if (onStairs)
+	{
+		if (cameraStart + cameraStep < playerBox.x)
+		{
+			cameraStep++;
+		}
+		else if (cameraStart + cameraStep > playerBox.x)
+		{
+			cameraStep--;
+		}
+	}
 }
 
 bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
@@ -548,24 +782,67 @@ void Player::moveToStairs(SDL_Rect box, Tile* tiles[])
 	//Go through the tiles
 	for (int i = 0; i < totalTiles; ++i)
 	{		
-		if (tiles[i]->Type() == 'R' || tiles[i]->Type() == 'L')
+		if (tiles[i]->Type() == 'R')
 		{
 			if (playerBase == (tiles[i]->Box().y + tiles[i]->Box().h))
 			{
 				if (playerRight > tiles[i]->Box().x && playerRight < (tiles[i]->Box().x + tiles[i]->Box().w))
 				{
+					flip = false;
+					currentAnimation = MOVING;
 					playerBox.x += 1;
 				}
 				if (playerLeft > tiles[i]->Box().x && playerLeft < (tiles[i]->Box().x + tiles[i]->Box().w))
 				{
+					flip = true;
+					currentAnimation = MOVING;
 					playerBox.x -= 1;
 				}
 				if (playerLeft == tiles[i]->Box().x)
 				{
-					onStairs = true;	
-				
+					rightStair = true;
+					leftStair = false;
+					onStairs = true;					
+					stepUp = true;		
+					stepFrame = 0;	
+					secondStep = 0;
+					playerBox.x += 1;
+					playerBox.y -= 1;
+					cameraStart = playerBox.x;
+					cameraStep = 0;
 				}
 			}			
+		}
+		if (tiles[i]->Type() == 'L')
+		{
+			if (playerBase == (tiles[i]->Box().y + tiles[i]->Box().h))
+			{
+				if (playerRight > tiles[i]->Box().x && playerRight < (tiles[i]->Box().x + tiles[i]->Box().w))
+				{
+					flip = false;
+					currentAnimation = MOVING;
+					playerBox.x += 1;
+				}
+				if (playerLeft > tiles[i]->Box().x && playerLeft < (tiles[i]->Box().x + tiles[i]->Box().w))
+				{
+					flip = true;
+					currentAnimation = MOVING;
+					playerBox.x -= 1;
+				}
+				if (playerLeft == tiles[i]->Box().x)
+				{
+					rightStair = false;
+					leftStair = true;
+					onStairs = true;
+					stepUp = true;
+					stepFrame = 0;
+					secondStep = 0;
+					playerBox.x -= 1;
+					playerBox.y -= 1;
+					cameraStart = playerBox.x;
+					cameraStep = 0;
+				}
+			}
 		}
 		
 	}	
@@ -596,9 +873,13 @@ void Player::moveToStairsDown(SDL_Rect box, Tile* tiles[])
 				onStairs = true;
 				rightStair = true;
 				leftStair = false;
-				playerBox.x -= 1;
-				playerBox.y += 1;
+				secondStep = 8;
+				stepUp = false;
+				takeStep(false, false);				
 				crouching = false;
+				stepFrame = 1;
+				cameraStart = playerBox.x;
+				cameraStep = 0;
 			}
 		}
 		if (tiles[i]->Type() == 'L')
@@ -618,11 +899,40 @@ void Player::moveToStairsDown(SDL_Rect box, Tile* tiles[])
 				onStairs = true;
 				leftStair = true;
 				rightStair = false;
-				playerBox.x += 1;
-				playerBox.y += 1;
+				secondStep = 8;
+				stepUp = false;
+				takeStep(false, true);
 				crouching = false;
+				stepFrame = 1;
+				cameraStart = playerBox.x;
+				cameraStep = 0;
 			}
 		}
+	}
+}
+
+//Player takes a step on the stairs
+void Player::takeStep(bool up, bool right)
+{	
+	if (up && right)
+	{
+		playerBox.y -= 8;
+		playerBox.x += 8;
+	}
+	if (!up && !right)
+	{
+		playerBox.y += 8;
+		playerBox.x -= 8;
+	}
+	if (up && !right)
+	{
+		playerBox.y -= 8;
+		playerBox.x -= 8;
+	}
+	if (!up && right)
+	{
+		playerBox.y += 8;
+		playerBox.x += 8;
 	}
 }
 
@@ -674,7 +984,12 @@ bool Player::checkCollision(SDL_Rect a, SDL_Rect b)
 void Player::setCamera(SDL_Rect& camera)
 {
 	//Center the camera over the player
-	camera.x = (playerBox.x + PLAYER_WIDTH / 2) - SCREEN_WIDTH / 2;	
+	if (!onStairs)
+		camera.x = (playerBox.x + PLAYER_WIDTH / 2) - SCREEN_WIDTH / 2;
+
+	//If on stairs, smooth the camera movement
+	if (onStairs)
+		camera.x = (cameraStart + cameraStep + PLAYER_WIDTH / 2) - SCREEN_WIDTH / 2;
 	
 	//Keep the camera in bounds
 	if (camera.x < 0)
@@ -685,25 +1000,14 @@ void Player::setCamera(SDL_Rect& camera)
 	{
 		camera.x = levelWidth - camera.w;
 	}
-
-	//Removed options for camera motion on y axis
-	//camera.y = (playerBox.y + PLAYER_HEIGHT / 2) - SCREEN_HEIGHT / 2;
-	/*if (camera.y < 0)
-	{
-		camera.y = 0;
-	}
-	
-	if (camera.y > LEVEL_HEIGHT - camera.h)
-	{
-		camera.y = LEVEL_HEIGHT - camera.h;
-	}*/
 }
 
 void Player::Reset(int x, int y)
 {
 	playerBox.x = x;
 	playerBox.y = y;
-	velX = velY = 0;	
+	velX = 0;	
+	velY = 0.0f;
 }
 
 void Player::Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount)
@@ -752,6 +1056,41 @@ void Player::Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, 
 			tm->drawFrame("player_crouch_whip1", playerBox.x - camera.x - 64, playerBox.y - camera.y + 16, 128, Player::PLAYER_HEIGHT, 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
 		break;
 
+	case STAIRS_UP:
+		if (!flip)
+			tm->drawFrame("player_stairs_up", playerBox.x - camera.x, playerBox.y - camera.y, Player::PLAYER_WIDTH, Player::PLAYER_HEIGHT, 1, stepFrame, renderer, SDL_FLIP_NONE);
+		else
+			tm->drawFrame("player_stairs_up", playerBox.x - camera.x, playerBox.y - camera.y, Player::PLAYER_WIDTH, Player::PLAYER_HEIGHT, 1, stepFrame, renderer, SDL_FLIP_HORIZONTAL);
+		break;
+
+	case STAIRS_DOWN:
+		if (!flip)
+			tm->drawFrame("player_stairs_down", playerBox.x - camera.x, playerBox.y - camera.y, Player::PLAYER_WIDTH, Player::PLAYER_HEIGHT, 1, stepFrame, renderer, SDL_FLIP_NONE);
+		else
+			tm->drawFrame("player_stairs_down", playerBox.x - camera.x, playerBox.y - camera.y, Player::PLAYER_WIDTH, Player::PLAYER_HEIGHT, 1, stepFrame, renderer, SDL_FLIP_HORIZONTAL);
+		break;
+
+	case STAIRS_UP_ATTACK:
+		if (!flip)
+			tm->drawFrame("player_stairs_up_attack", playerBox.x - camera.x - 32 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, 1, currentFrame, renderer, SDL_FLIP_NONE);
+		else
+			tm->drawFrame("player_stairs_up_attack", playerBox.x - camera.x - 64 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
+		break;
+
+	case STAIRS_DOWN_ATTACK:
+		if (!flip)
+			tm->drawFrame("player_stairs_down_attack", playerBox.x - camera.x - 32, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, 1, currentFrame, renderer, SDL_FLIP_NONE);
+		else
+			tm->drawFrame("player_stairs_down_attack", playerBox.x - camera.x - 64, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
+		break;
+
+	case DAMAGED:
+		if (!flip)
+			tm->draw("player_damaged", playerBox.x - camera.x, playerBox.y - camera.y, Player::PLAYER_WIDTH, Player::PLAYER_HEIGHT, renderer, SDL_FLIP_NONE);
+		else
+			tm->draw("player_damaged", playerBox.x - camera.x, playerBox.y - camera.y, Player::PLAYER_WIDTH, Player::PLAYER_HEIGHT, renderer, SDL_FLIP_HORIZONTAL);
+		break;
+
 	default:
 		break;
 	}
@@ -767,4 +1106,33 @@ void Player::SetLevelArea(int width, int height, int tiles)
 	levelWidth = width;
 	levelHeight = height;
 	totalTiles = tiles;	
+}
+
+void Player::takeHit(EnemyType enemyType)
+{
+	switch (enemyType)
+	{
+	case GHOUL:
+		health -= 2;
+		break;
+
+	default:
+		break;
+	}
+
+	currentAnimation = DAMAGED;
+	hitCooldown = 120;
+	damaged = true;
+	onStairs = false;
+	jumping = true;
+	onGround = false;
+	jumpTime = 60;
+	velY = -4.5f;
+
+	if (!flip)
+		velX = -2;
+	else
+		velX = 2;
+	
+
 }

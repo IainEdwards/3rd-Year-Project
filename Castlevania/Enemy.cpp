@@ -9,6 +9,7 @@ Enemy::Enemy()
 
 	flip = true;
 	hitPoints = 1;
+	cooldown = 0;
 }
 
 Enemy::~Enemy()
@@ -26,6 +27,11 @@ int Enemy::PosY()
 	return enemyBox.y;
 }
 
+EnemyType Enemy::Type()
+{
+	return enemyType;
+}
+
 void Enemy::setEnemy(int x, int y, EnemyType type)
 {
 	enemyBox.x = x;
@@ -41,9 +47,7 @@ void Enemy::setEnemy(int x, int y, EnemyType type)
 
 	default:
 		break;
-	}
-
-	
+	}	
 }
 
 void Enemy::ApplyPhysics()
@@ -64,10 +68,7 @@ void Enemy::ApplyPhysics()
 	default:
 		break;
 
-	}
-	
-
-	
+	}	
 }
 
 void Enemy::DrawEnemy(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount)
@@ -104,15 +105,11 @@ int Enemy::HitPoints()
 
 void Enemy::takeHit()
 {
+	cooldown = 24;
 	hitPoints--;
 }
 
 int Enemy::getCooldown()
 {
 	return cooldown;
-}
-
-void Enemy::beginCooldown()
-{
-	cooldown = 24;
 }

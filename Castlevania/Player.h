@@ -6,6 +6,7 @@
 #include <string>
 #include "Tile.h"
 #include "SoundManager.h"
+#include "Enemy.h"
 
 enum PlayerAnimation
 {
@@ -14,7 +15,12 @@ enum PlayerAnimation
 	JUMPING,
 	ATTACKING,
 	CROUCHING,
-	CROUCH_ATTACK
+	CROUCH_ATTACK,
+	STAIRS_UP,
+	STAIRS_DOWN,
+	STAIRS_UP_ATTACK,
+	STAIRS_DOWN_ATTACK,
+	DAMAGED
 };
 
 class Player
@@ -41,6 +47,8 @@ public:
 	void moveToStairs(SDL_Rect box, Tile* tiles[]);
 
 	void moveToStairsDown(SDL_Rect box, Tile* tiles[]);	
+
+	void takeStep(bool up, bool right);
 
 	bool checkCollision(SDL_Rect a, SDL_Rect b);	
 
@@ -80,6 +88,12 @@ public:
 
 	bool ReachedExit();
 
+	int Health();
+	void SetHealth(int health);
+	void takeHit(EnemyType enemyType);
+
+	int HitCooldown();
+
 private:
 
 	PlayerAnimation currentAnimation;	
@@ -88,43 +102,65 @@ private:
 	SDL_Rect attackBox;
 
 	float posX, posY;
-	float velX, velY;
-
+	float velY;// velX, velY;
+	int velX;
+	
 	bool flip;	
 
 	//Player movement constants
-	static const float MoveSpeed;
+	static const int MoveSpeed;
 	static const float GravityAcceleration;	
 	static const float JumpVelocity;
 	static const int MaxJumpTime = 64;
 
+	//Variables for calculating animation frame
 	int currentFrame;
 	int frameTime;
 		
+	//Variables for calculating jumps
 	bool jumping;	
 	int jumpTime;
 	bool jumpRelease;
 	bool onGround;
 
+	//Variables to prevent movement overlap
 	bool leftPress;
 	bool rightPress;	
 
+	//Variables for attacking
 	bool attacking;
 	int attackTime;
 
+	//Variable for crouching
 	bool crouching;
 
+	//Variables for stairs
 	bool goToStairs;
 	bool onStairs;
-	bool moveUp;
-	bool moveDown;
+	bool upPress;
+	bool downPress;
 	bool rightStair;
 	bool leftStair;	
+	int stepFrame;
+	int stepTime;
+	int secondStep;
+	bool stepUp;
+	int cameraStep;
+	int cameraStart;
 
+	//Variables for level information
 	int totalTiles;
 	int levelWidth;
 	int levelHeight;
 
+	//Exit flag
 	bool reachedExit;
+
+	//Variables for player information
+	int health;
+	int lives;
+
+	int hitCooldown;
+	bool damaged;
 };
 #endif
