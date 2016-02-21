@@ -2,9 +2,7 @@
 #define ENEMY_H
 
 #include <SDL.h>
-#include <string>
-#include <vector>
-#include "Tile.h"
+#include "TextureManager.h"
 
 enum EnemyType
 {
@@ -60,6 +58,7 @@ private:
 	bool flip;
 	
 	float velX;
+	float posX;
 	int hitPoints;
 
 	int cooldown;

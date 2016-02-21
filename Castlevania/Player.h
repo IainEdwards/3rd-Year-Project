@@ -20,7 +20,9 @@ enum PlayerAnimation
 	STAIRS_DOWN,
 	STAIRS_UP_ATTACK,
 	STAIRS_DOWN_ATTACK,
-	DAMAGED
+	DAMAGED,
+	DEAD,
+	FLASH
 };
 
 class Player
@@ -30,11 +32,13 @@ public:
 	Player();
 	~Player() {};
 
-	void Load(TextureManager* tm, SDL_Renderer* renderer, SoundManager* sm);
+	//void Load(TextureManager* tm, SDL_Renderer* renderer, SoundManager* sm);
 
 	void GetInput(SDL_Event& e, SoundManager* sm);
 
 	void ApplyPhysics(Tile *tiles[]);
+
+	void PlaySounds(SoundManager* sm);
 
 	void Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 
@@ -52,17 +56,13 @@ public:
 
 	bool checkCollision(SDL_Rect a, SDL_Rect b);	
 
-	void Reset(int x, int y);
+	void Reset(int x, int y);// , int health, int lives, int ammo);
 
-
-
-	//Player constants	
-	
+	//Player constants		
 	static const int PLAYER_WIDTH = 32;
-	static const int PLAYER_HEIGHT = 64;
-	static const int PLAYER_OFFSET_X = 16;
-	static const int PLAYER_OFFSET_Y = 4;	
+	static const int PLAYER_HEIGHT = 64;	
 
+	//Screen constants
 	const int SCREEN_WIDTH = 512;
 	const int SCREEN_HEIGHT = 448;
 
@@ -71,28 +71,45 @@ public:
 	const int TILE_HEIGHT = 32;	
 
 	int CurrentFrame();
-
+	void SetCurrentFrame(int frame);
+	void SetCurrentAnimation(PlayerAnimation animation);
 	PlayerAnimation Animation();
 
 	int PosX();
 	int PosY();
+	void ChangePosX(int value);
 
 	bool Flip();
 
 	SDL_Rect AttackBox();
 	SDL_Rect PlayerBox();	
 
-	Mix_Chunk *whipSFX = NULL;
-
 	void SetLevelArea(int width, int height, int tiles);
 
 	bool ReachedExit();
 
+	bool ReachedDoor();
+
+	//Health functions
 	int Health();
 	void SetHealth(int health);
 	void takeHit(EnemyType enemyType);
-
 	int HitCooldown();
+
+	//Lives and death functions
+	int Lives();
+	void SetLives(int lives);
+	void SetAlive();
+	void playerDeath();
+	bool PlayerDead();	
+
+	//Ammo functions
+	int Ammo();
+	void SetAmmo(int ammo);
+
+	//Whip functions
+	int WhipLevel();
+	void SetWhipLevel(int level);	
 
 private:
 
@@ -102,16 +119,14 @@ private:
 	SDL_Rect attackBox;
 
 	float posX, posY;
-	float velY;// velX, velY;
+	float velY;
 	int velX;
 	
 	bool flip;	
 
 	//Player movement constants
-	static const int MoveSpeed;
-	static const float GravityAcceleration;	
-	static const float JumpVelocity;
-	static const int MaxJumpTime = 64;
+	static const int MoveSpeed;	
+	static const float JumpVelocity;	
 
 	//Variables for calculating animation frame
 	int currentFrame;
@@ -122,6 +137,7 @@ private:
 	int jumpTime;
 	bool jumpRelease;
 	bool onGround;
+	int landingTimer;
 
 	//Variables to prevent movement overlap
 	bool leftPress;
@@ -129,7 +145,7 @@ private:
 
 	//Variables for attacking
 	bool attacking;
-	int attackTime;
+	int attackTimer;
 
 	//Variable for crouching
 	bool crouching;
@@ -155,12 +171,22 @@ private:
 
 	//Exit flag
 	bool reachedExit;
+	bool reachedDoor;
 
 	//Variables for player information
 	int health;
 	int lives;
+	int ammo;
+	int whipLevel;
+	int whipLength;
 
+	//Variables for player taking damage
 	int hitCooldown;
 	bool damaged;
+	int flashTimer;
+	bool playerDead;	
+
+	//Variable for collecting whip
+	float whipFlash;
 };
 #endif

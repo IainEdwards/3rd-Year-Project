@@ -1,21 +1,8 @@
 #include "Enemy.h"
 
-Enemy::Enemy()
-{
-	enemyBox.x = 0;
-	enemyBox.y = 0;
-	enemyBox.w = 32;
-	enemyBox.h = 64;
+Enemy::Enemy(){}
 
-	flip = true;
-	hitPoints = 1;
-	cooldown = 0;
-}
-
-Enemy::~Enemy()
-{
-
-}
+Enemy::~Enemy(){}
 
 int Enemy::PosX()
 {
@@ -36,13 +23,18 @@ void Enemy::setEnemy(int x, int y, EnemyType type)
 {
 	enemyBox.x = x;
 	enemyBox.y = y;
+	posX = x;
 
 	enemyType = type;
 
 	switch (enemyType)
 	{
 	case GHOUL:
+		flip = true;
+		enemyBox.w = 32;
+		enemyBox.h = 64;
 		hitPoints = 1;
+		cooldown = 0;
 		break;
 
 	default:
@@ -57,11 +49,13 @@ void Enemy::ApplyPhysics()
 	{
 	case GHOUL:
 		if (flip)
-			velX = -1.5f;
+			velX = -1.7f;
 		if (!flip)
-			velX = 1.5f;
+			velX = 1.7f;
 
-		enemyBox.x += velX;
+		posX += velX;
+
+		enemyBox.x = (int)round(posX);
 
 		break;
 

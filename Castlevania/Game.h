@@ -14,6 +14,7 @@ enum GameState
 	Intro,
 	Fade,
 	Running,
+	Door,
 	GameOver
 };
 
@@ -35,6 +36,7 @@ public:
 
 	void RunTitle();
 	void RunIntro();
+	void RunDoor();
 
 private:
 
@@ -43,9 +45,6 @@ private:
 	const int SCREEN_WIDTH = 512;
 	const int SCREEN_HEIGHT = 448;	
 	const int FPS = 60;
-
-	int fadeTime;
-	bool fadeDone;
 };
 
 
