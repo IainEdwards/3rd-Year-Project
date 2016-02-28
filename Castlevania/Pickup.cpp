@@ -73,7 +73,9 @@ void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 		case WHITE_MONEYBAG:
 			pickupBox.y += (int)round(velY);
 			break;
-
+		case DAGGER_DROP:
+			pickupBox.y += (int)round(velY);
+			break;
 		default:
 			break;
 		}
@@ -118,6 +120,9 @@ void Pickup::DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& ca
 		break;
 	case WHITE_MONEYBAG:
 		tm->draw("white_moneybag", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case DAGGER_DROP:
+		tm->draw("dagger", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
 		break;
 
 	default:

@@ -5,12 +5,14 @@
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 #include <list>
+#include <vector>
 #include "Tile.h"
 #include "Player.h"
 #include "Enemy.h"
 #include "DestroyableObject.h"
 #include "Pickup.h"
 #include "SpritePopup.h"
+#include "SubWeapon.h"
 #include "SoundManager.h"
 
 class Level
@@ -21,8 +23,6 @@ public:
 	~Level();	
 
 	void LoadLevel(std::string levelID, int levelN, TextureManager* tm, SDL_Renderer* renderer, SoundManager* sm);
-
-	void ClearLevel();
 
 	void UpdateLevel(SDL_Rect& camera, SoundManager* sm);
 
@@ -48,6 +48,10 @@ public:
 
 	void PopupSprite(int x, int y, PopupType type);
 
+	std::list <SubWeapon> projectiles;
+
+	void SpawnProjectile(int x, int y, int directionValue, SubWeaponType type);
+
 	//Tile constants
 	const int TILE_WIDTH = 32;
 	const int TILE_HEIGHT = 32;
@@ -62,6 +66,11 @@ public:
 
 	void SpawnEnemies(SDL_Rect& camera);	
 
+	void SetPreviousLevelSpawn(bool spawnOne, bool spawnTwo);
+
+	void SetNextLevelSpawn(bool spawnTwo);
+
+
 private:
 
 	int levelWidth;	
@@ -70,8 +79,9 @@ private:
 
 	std::string levelName;	
 
-	int spawnPointX;
-	int spawnPointY;
+	int spawnPointX, spawnPointY;
+	int spawnPoint2X, spawnPoint2Y;
+	int spawnPoint3X, spawnPoint3Y;
 
 	int spawnCooldown;
 
@@ -79,6 +89,9 @@ private:
 
 	bool pause;
 	int pauseTimer;
+
+	bool previousLevel, previousLevel2;
+	bool secondExit;
 };
 
 #endif

@@ -58,6 +58,35 @@ void Player::SetAmmo(int value)
 	ammo = value;
 }
 
+SubWeaponType Player::SubWeapon()
+{
+	return currentSubWeapon;
+}
+void Player::SetSubWeapon(SubWeaponType type)
+{
+	currentSubWeapon = type;
+}
+bool Player::SpawnProjectile()
+{
+	return spawnProjectile;
+}
+void Player::SetSpawnProjectile(bool value)
+{
+	spawnProjectile = value;
+}
+int Player::CurrentProjectiles()
+{
+	return currentProjectiles;
+}
+void Player::SetCurrentProjectiles(int value)
+{
+	currentProjectiles = value;
+}
+void Player::SetMaxProjectiles(int value)
+{
+	maxProjectiles = value;
+}
+
 int Player::WhipLevel()
 {
 	return whipLevel;
@@ -107,10 +136,10 @@ SDL_Rect Player::PlayerBox()
 	return playerBox;
 }
 
-void Player::GetInput(SDL_Event& e, SoundManager* sm)
+void Player::GetInput(SDL_Event& e)
 {
 	//If a key was pressed
-	if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
+	if (e.type == SDL_KEYDOWN && e.key.repeat == 0 && !autoWalk)
 	{			
 		switch (e.key.keysym.sym)
 		{		
@@ -141,7 +170,29 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 			break;
 
 		case SDLK_z:
-			if (!jumping && !attacking && !crouching && !onStairs && !damaged)
+			goToStairs = false;
+			if (upPress && !jumping && !attacking && !throwing && !downPress && !onStairs && currentProjectiles < maxProjectiles && ammo > 0 && currentSubWeapon != EMPTY && currentSubWeapon != STOPWATCH)
+			{
+				currentFrame = 0;
+				currentAnimation = THROWING;
+				throwing = true;	
+				attacking = true;
+				attackTimer = 60;
+				velX = 0;
+				spawnProjectile = true;	
+				ammo--;
+			}
+			else if (upPress && jumping && !attacking && !throwing && !downPress && !onStairs && currentProjectiles < maxProjectiles && ammo > 0 && currentSubWeapon != EMPTY && currentSubWeapon != STOPWATCH)
+			{
+				currentFrame = 0;
+				currentAnimation = THROWING;
+				throwing = true;
+				attacking = true;
+				attackTimer = 60;				
+				spawnProjectile = true;
+				ammo--;
+			}
+			else if (!jumping && !attacking && !throwing && !crouching && !onStairs && !damaged)
 			{						
 				currentFrame = 0;
 				currentAnimation = ATTACKING;
@@ -149,14 +200,14 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				attackTimer = 60;
 				velX = 0;
 			}
-			else if (jumping && !attacking && !crouching && !onStairs && !damaged)
+			else if (jumping && !attacking && !throwing && !crouching && !onStairs && !damaged)
 			{					
 				currentFrame = 0;
 				currentAnimation = ATTACKING;
 				attacking = true;
 				attackTimer = 60;
 			}
-			else if (!jumping && !attacking && crouching && !onStairs && !damaged)
+			else if (!jumping && !attacking && !throwing && crouching && !onStairs && !damaged)
 			{		
 				currentFrame = 0;
 				currentAnimation = CROUCH_ATTACK;
@@ -164,14 +215,25 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 				attackTimer = 60;
 				velX = 0;
 			}
-			else if (jumping && !attacking && crouching && !onStairs && !damaged)
+			else if (jumping && !attacking && !throwing && crouching && !onStairs && !damaged)
 			{			
 				currentFrame = 0;
 				currentAnimation = ATTACKING;
 				attacking = true;
 				attackTimer = 60;
 			}
-			else if (onStairs && !attacking && secondStep <= 0)
+			else if (onStairs && upPress && !downPress && !attacking && !throwing
+				&& currentProjectiles < maxProjectiles && ammo > 0 && currentSubWeapon != EMPTY && currentSubWeapon != STOPWATCH)
+			{
+				currentFrame = 0;
+				currentAnimation = STAIRS_UP_THROWING;
+				throwing = true;
+				attacking = true;
+				attackTimer = 60;
+				spawnProjectile = true;
+				ammo--;
+			}
+			else if (onStairs && !attacking && !throwing && secondStep <= 0)
 			{
 				currentFrame = 0;				
 				attacking = true;
@@ -194,16 +256,20 @@ void Player::GetInput(SDL_Event& e, SoundManager* sm)
 					currentAnimation = STAIRS_DOWN_ATTACK;
 				}
 			}
+			
 			break;
 
 		case SDLK_UP:
-			currentAnimation = IDLE;
-			if (!onStairs && !jumping)
+			
+			upPress = true;
+			//currentAnimation = IDLE;
+
+			if (!onStairs && !jumping && !attacking && !throwing)
 				goToStairs = true;
 			else
 				goToStairs = false;
 			
-			upPress = true;
+			
 
 		}
 	}
@@ -296,7 +362,7 @@ void Player::ApplyPhysics(Tile *tiles[])
 			}			
 		}
 
-		if (attacking)
+		if (attacking && !throwing)
 		{
 			attackTimer--;
 			if (attackTimer <= 36)
@@ -342,7 +408,17 @@ void Player::ApplyPhysics(Tile *tiles[])
 					}
 				}
 			}
-		}		
+		}	
+		else if (throwing && attacking)
+		{
+			attackTimer--;
+			if (attackTimer <= 36)
+			{				
+				throwing = false;
+				attacking = false;
+				currentAnimation = IDLE;
+			}
+		}
 
 		if (!jumping && !attacking && !crouching)
 		{
@@ -379,6 +455,13 @@ void Player::ApplyPhysics(Tile *tiles[])
 			currentAnimation = CROUCHING;
 		}
 		velY += 0.3f;
+
+		if (autoWalk)
+		{
+			velX = 0;
+			playerBox.x += 1;
+			currentAnimation = MOVING;
+		}
 
 		playerBox.x += velX;
 
@@ -550,7 +633,7 @@ void Player::ApplyPhysics(Tile *tiles[])
 		}		
 	}
 
-	if (onStairs && attacking)
+	if (onStairs && attacking && !throwing)
 	{
 		attackTimer--;
 
@@ -615,6 +698,16 @@ void Player::ApplyPhysics(Tile *tiles[])
 			}
 		}
 	}
+	else if (onStairs && throwing && attacking)
+	{
+		attackTimer--;
+		if (attackTimer <= 36)
+		{
+			throwing = false;
+			attacking = false;
+			currentAnimation = STAIRS_UP;
+		}
+	}
 	
 	//Stop stair movement if player reaches top of stairs
 	if (onStairs && !touchesStairs(playerBox, tiles, false))
@@ -664,15 +757,39 @@ void Player::ApplyPhysics(Tile *tiles[])
 		{
 			cameraStep--;
 		}
+
+		if (touchesExit(playerBox, tiles, true))
+		{
+			reachedExitStair = true;
+		}
+
+		if (touchesExit(playerBox, tiles, false))
+		{
+			reachedExitStair2 = true;
+		}
+
+		if (touchesEntrance(playerBox, tiles, true))
+		{
+			reachedEntrance = true;
+		}
+
+		if (touchesEntrance(playerBox, tiles, false))
+		{
+			reachedEntrance2 = true;
+		}
 	}
 }
 
 void Player::PlaySounds(SoundManager* sm)
 {
-	if (attackTimer == 59)
+	if (attackTimer == 59 && !throwing)
 		sm->play("player_whip");
+	if (attackTimer == 59 && throwing)
+		sm->play("player_throw");
 	if (landingTimer == 20)
 		sm->play("player_fall");
+	if (reachedExit)
+		sm->play("enter_castle");
 }
 
 bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
@@ -708,8 +825,8 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 			if ((box.y + 4) <= tiles[i]->Box().y)
 			{
 				SDL_Rect widerBox = tiles[i]->Box();
-				widerBox.w = 64;
-				widerBox.x -= 16;
+				widerBox.w = 48;
+				widerBox.x -= 8;
 
 				if (checkCollision(box, widerBox))
 				{					
@@ -724,7 +841,7 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 		//If the tile is the exit
 		if (tiles[i]->Type() == 'X')
 		{
-			if (checkCollision(box, tiles[i]->Box()))
+			if (checkCollision(box, tiles[i]->Box()) && !onStairs)
 			{
 				reachedExit = true;				
 			}
@@ -736,6 +853,23 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 			if (checkCollision(box, tiles[i]->Box()))
 			{
 				reachedDoor = true;
+			}
+		}
+
+		//If the tile is near exit, first level
+		if (tiles[i]->Type() == 'W')
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{				
+				autoWalk = true;				
+			}
+		}
+
+		if (tiles[i]->Type() == 'V')
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{				
+				autoWalk = true;				
 			}
 		}
 	}
@@ -800,11 +934,56 @@ bool Player::touchesStairs(SDL_Rect box, Tile* tiles[], bool goDown)
 						return true;
 					}
 				}
-			}
+			}			
 		}
-
 	}
 	
+	return false;
+}
+
+bool Player::touchesExit(SDL_Rect box, Tile* tiles[], bool first)
+{
+	for (int i = 0; i < totalTiles; ++i)
+	{
+		if (tiles[i]->Type() == 'X' && first)
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{
+				return true;
+			}
+		}		
+		if (tiles[i]->Type() == 'W' && !first)
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool Player::touchesEntrance(SDL_Rect box, Tile* tiles[], bool first)
+{
+	for (int i = 0; i < totalTiles; ++i)
+	{
+		if (tiles[i]->Type() == 'Z' && first)
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{
+				return true;
+			}
+		}	
+		if (tiles[i]->Type() == 'Y' && !first)
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{				
+				return true;
+			}
+		}
+	}
+
 	return false;
 }
 
@@ -1065,13 +1244,22 @@ void Player::Reset(int x, int y)//, int healthValue, int livesValue, int ammoVal
 	secondStep = 0;
 	stepUp = false;
 	cameraStep = 0;
-	cameraStart = 0;	
+	cameraStart = playerBox.x;	
 	hitCooldown = 0;
 	damaged = false;
 	flashTimer = 0;
 	whipFlash = 0.0f;
 	reachedExit = false;
+	reachedExitStair = false;
+	reachedExitStair2 = false;
+	reachedDoor = false;
+	reachedEntrance = false;
+	reachedEntrance2 = false;	
 	playerDead = false;
+	currentProjectiles = 0;
+	maxProjectiles = 1;
+	spawnProjectile = false;
+	autoWalk = false;
 
 	frameTime = 0;
 	currentFrame = 0;
@@ -1179,21 +1367,21 @@ void Player::Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, 
 			if (!flip)
 				tm->drawFrame("player_stairs_up_whip1", playerBox.x - camera.x - 32 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_NONE);
 			else
-				tm->drawFrame("player_stairs_up_whip1", playerBox.x - camera.x - 64 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
+				tm->drawFrame("player_stairs_up_whip1", playerBox.x - camera.x - 64 + 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
 		}
 		if (whipLevel == 2)
 		{
 			if (!flip)
 				tm->drawFrame("player_stairs_up_whip2", playerBox.x - camera.x - 32 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_NONE);
 			else
-				tm->drawFrame("player_stairs_up_whip2", playerBox.x - camera.x - 64 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
+				tm->drawFrame("player_stairs_up_whip2", playerBox.x - camera.x - 64 + 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
 		}
 		if (whipLevel == 3)
 		{
 			if (!flip)
 				tm->drawFrame("player_stairs_up_whip3", playerBox.x - camera.x - 32 - 2, playerBox.y - camera.y, 160, Player::PLAYER_HEIGHT, (attackTimer % 4) + 1, currentFrame, renderer, SDL_FLIP_NONE);
 			else
-				tm->drawFrame("player_stairs_up_whip3", playerBox.x - camera.x - 96 - 2, playerBox.y - camera.y, 160, Player::PLAYER_HEIGHT, (attackTimer % 4) + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
+				tm->drawFrame("player_stairs_up_whip3", playerBox.x - camera.x - 96 + 2, playerBox.y - camera.y, 160, Player::PLAYER_HEIGHT, (attackTimer % 4) + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
 		}
 		break;
 
@@ -1243,6 +1431,21 @@ void Player::Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, 
 			tm->drawFrame("player_flash", playerBox.x - camera.x, playerBox.y - camera.y, Player::PLAYER_WIDTH, Player::PLAYER_HEIGHT, ((int)round(whipFlash) % 4) + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
 		break;
 
+	case THROWING:
+		if (!flip)
+			tm->drawFrame("player_throwing", playerBox.x - camera.x - 32, playerBox.y - camera.y + 2, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_NONE);
+		else
+			tm->drawFrame("player_throwing", playerBox.x - camera.x - 64, playerBox.y - camera.y + 2, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
+		break;
+
+	case STAIRS_UP_THROWING:
+		if (!flip)
+			tm->drawFrame("player_stairs_up_throwing", playerBox.x - camera.x - 32 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_NONE);
+		else
+			tm->drawFrame("player_stairs_up_throwing", playerBox.x - camera.x - 64 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
+		break;
+
+
 	default:
 		break;
 	}
@@ -1256,6 +1459,46 @@ bool Player::ReachedExit()
 bool Player::ReachedDoor()
 {
 	return reachedDoor;
+}
+
+bool Player::ReachedExitStair()
+{
+	return reachedExitStair;
+}
+
+bool Player::ReachedExitStair2()
+{
+	return reachedExitStair2;
+}
+
+bool Player::ReachedEntrance()
+{
+	return reachedEntrance;
+}
+
+bool Player::ReachedEntrance2()
+{
+	return reachedEntrance2;
+}
+
+void Player::SetOnStairs(bool up)
+{
+	if (up)
+	{
+		onStairs = true;
+		leftStair = true;
+		rightStair = false;
+		currentAnimation = STAIRS_UP;
+		flip = true;
+	}
+
+	if (!up)
+	{
+		onStairs = true;
+		leftStair = true;
+		rightStair = false;
+		currentAnimation = STAIRS_DOWN;
+	}
 }
 
 void Player::SetLevelArea(int width, int height, int tiles)
@@ -1307,5 +1550,6 @@ void Player::playerDeath()
 	velX = 0;
 	velY = 0.0f;
 	currentAnimation = DEAD;
+	currentSubWeapon = EMPTY;
 	lives--;
 }

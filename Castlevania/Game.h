@@ -38,6 +38,8 @@ public:
 	void RunIntro();
 	void RunDoor();
 
+	void SetPlayerStats();
+
 private:
 
 	bool running = false;

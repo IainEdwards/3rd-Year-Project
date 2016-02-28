@@ -51,6 +51,9 @@
     <ClCompile Include="SpritePopup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SubWeapon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Player.h">
@@ -84,6 +87,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SpritePopup.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SubWeapon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -7,6 +7,7 @@
 #include "Tile.h"
 #include "SoundManager.h"
 #include "Enemy.h"
+#include "SubWeapon.h"
 
 enum PlayerAnimation
 {
@@ -20,6 +21,8 @@ enum PlayerAnimation
 	STAIRS_DOWN,
 	STAIRS_UP_ATTACK,
 	STAIRS_DOWN_ATTACK,
+	THROWING,
+	STAIRS_UP_THROWING,
 	DAMAGED,
 	DEAD,
 	FLASH
@@ -34,7 +37,7 @@ public:
 
 	//void Load(TextureManager* tm, SDL_Renderer* renderer, SoundManager* sm);
 
-	void GetInput(SDL_Event& e, SoundManager* sm);
+	void GetInput(SDL_Event& e);
 
 	void ApplyPhysics(Tile *tiles[]);
 
@@ -47,6 +50,10 @@ public:
 	bool touchesWall(SDL_Rect box, Tile* tiles[]);	
 
 	bool touchesStairs(SDL_Rect box, Tile* tiles[], bool goDown);
+
+	bool touchesExit(SDL_Rect box, Tile* tiles[], bool first);
+
+	bool touchesEntrance(SDL_Rect box, Tile* tiles[], bool first);
 
 	void moveToStairs(SDL_Rect box, Tile* tiles[]);
 
@@ -87,8 +94,13 @@ public:
 	void SetLevelArea(int width, int height, int tiles);
 
 	bool ReachedExit();
-
 	bool ReachedDoor();
+	bool ReachedExitStair();
+	bool ReachedExitStair2();
+	bool ReachedEntrance();
+	bool ReachedEntrance2();	
+
+	void SetOnStairs(bool up);
 
 	//Health functions
 	int Health();
@@ -107,6 +119,15 @@ public:
 	int Ammo();
 	void SetAmmo(int ammo);
 
+	SubWeaponType SubWeapon();
+	void SetSubWeapon(SubWeaponType type);
+
+	bool SpawnProjectile();
+	void SetSpawnProjectile(bool value);
+	int CurrentProjectiles();
+	void SetCurrentProjectiles(int value);
+	void SetMaxProjectiles(int value);	
+
 	//Whip functions
 	int WhipLevel();
 	void SetWhipLevel(int level);	
@@ -114,6 +135,11 @@ public:
 private:
 
 	PlayerAnimation currentAnimation;	
+
+	SubWeaponType currentSubWeapon;
+	int maxProjectiles;
+	int currentProjectiles;
+	bool spawnProjectile;
 
 	SDL_Rect playerBox;
 	SDL_Rect attackBox;
@@ -147,6 +173,8 @@ private:
 	bool attacking;
 	int attackTimer;
 
+	bool throwing;
+
 	//Variable for crouching
 	bool crouching;
 
@@ -172,6 +200,11 @@ private:
 	//Exit flag
 	bool reachedExit;
 	bool reachedDoor;
+	bool reachedExitStair;
+	bool reachedExitStair2;
+	bool reachedEntrance;
+	bool reachedEntrance2;
+	
 
 	//Variables for player information
 	int health;
@@ -188,5 +221,8 @@ private:
 
 	//Variable for collecting whip
 	float whipFlash;
+
+	//Variable to turn on autowalk
+	bool autoWalk;
 };
 #endif

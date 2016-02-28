@@ -10,16 +10,17 @@
 #include "SoundManager.h"
 #include "MusicManager.h"
 
-GameState gameState = GameState::Fade;
+GameState gameState = GameState::Title;
 
 TextureManager *tm = new TextureManager();
 SoundManager *sm = new SoundManager();
 MusicManager *mm = new MusicManager();
 
-Level levels[4];
+Level levels[5];
 int levelN = -1;
 
 int health, lives, ammo, stage, whipLevel, bosshealth;
+SubWeaponType subWeaponType;
 int totalScore, levelScore, prevScore;
 int deathTimer;
 
@@ -49,6 +50,9 @@ bool fadeDone;
 //Variables for door transition
 int doorTimer;
 bool doorDone;
+
+bool previousLevel, previousLevel2;
+bool secondExit;
 
 //Game time variables
 int gameTime;
@@ -84,6 +88,8 @@ Game::Game()
 	lives = 3;
 	whipLevel = 1;
 	totalScore = 0;
+	subWeaponType = SubWeaponType::EMPTY;
+	previousLevel = false;
 
 	stage = 1;
 
@@ -115,10 +121,10 @@ void Game::HandleGameState()
 
 		if (fadeDone)
 		{		
-			levels[4];
+			levels[5];
 			levelN++;	
 
-			if (levelN != 0 && levelN != 1)
+			if (levelN != 0 && levelN != 1 && levelN != 3 && !previousLevel && !previousLevel2 && !secondExit)
 				stage++;
 
 			if (levelN == 0)
@@ -126,6 +132,24 @@ void Game::HandleGameState()
 
 			std::string levelID = "level";
 			levelID.append(std::to_string(levelN));
+
+			if (previousLevel)
+			{
+				levels[levelN].SetPreviousLevelSpawn(true, false);				
+			}	
+			else if (previousLevel2)
+			{
+				levels[levelN].SetPreviousLevelSpawn(false, true);
+			}
+			else
+				levels[levelN].SetPreviousLevelSpawn(false, false);
+
+			if (secondExit)
+				levels[levelN].SetNextLevelSpawn(true);
+
+			previousLevel = false;
+			previousLevel2 = false;
+			secondExit = false;
 			
 			levels[levelN].LoadLevel(levelID, levelN, tm, renderer, sm);						
 			levelScore = 0;
@@ -134,8 +158,10 @@ void Game::HandleGameState()
 			levels[levelN].player.SetHealth(health);
 			levels[levelN].player.SetLives(lives);
 			levels[levelN].player.SetAmmo(ammo);
+			levels[levelN].player.SetSubWeapon(subWeaponType);
 			levels[levelN].player.SetAlive();				
-			deathTimer = 180;
+			deathTimer = 180;		
+
 			gameState = GameState::Running;
 		}
 		break;			
@@ -173,7 +199,7 @@ void Game::Update()
 			}			
 
 			//Handle input for the player
-			levels[levelN].player.GetInput(Event, sm);			
+			levels[levelN].player.GetInput(Event);			
 		}
 
 		//Calculate the frame count for animations
@@ -213,10 +239,26 @@ void Game::Update()
 			fadeTimer = 60;
 			fadeDone = false;
 			gameState = GameState::Fade;
-			health = levels[levelN].player.Health();
-			lives = levels[levelN].player.Lives();
-			ammo = levels[levelN].player.Ammo();
-			whipLevel = levels[levelN].player.WhipLevel();
+			SetPlayerStats();
+		}
+
+		//Check if the player has reached an exit on stairs
+		if (levels[levelN].player.ReachedExitStair())
+		{
+			fadeTimer = 60;
+			fadeDone = false;
+			gameState = GameState::Fade;
+			SetPlayerStats();
+		}
+
+		//Check if the player has reached second exit on stairs in level
+		if (levels[levelN].player.ReachedExitStair2())
+		{
+			fadeTimer = 60;
+			fadeDone = false;
+			gameState = GameState::Fade;
+			SetPlayerStats();
+			secondExit = true;
 		}
 
 		//Check if the player has reached a door
@@ -225,10 +267,29 @@ void Game::Update()
 			doorTimer = 512;
 			doorDone = false;
 			gameState = GameState::Door;		
-			health = levels[levelN].player.Health();
-			ammo = levels[levelN].player.Ammo();
-			lives = levels[levelN].player.Lives();
-			whipLevel = levels[levelN].player.WhipLevel();
+			SetPlayerStats();
+		}
+
+		//Check if the player has reached an exit to previous level on stairs
+		if (levels[levelN].player.ReachedEntrance())
+		{
+			fadeTimer = 60;
+			fadeDone = false;
+			gameState = GameState::Fade;
+			SetPlayerStats();
+			levelN -= 2;
+			previousLevel = true;			
+		}
+
+		//Check if the player has reached a second exit to previous level on stairs
+		if (levels[levelN].player.ReachedEntrance2())
+		{
+			fadeTimer = 60;
+			fadeDone = false;
+			gameState = GameState::Fade;
+			SetPlayerStats();
+			levelN -= 2;
+			previousLevel2 = true;
 		}
 
 		//Check if the player is dead
@@ -247,6 +308,7 @@ void Game::Update()
 			{
 				fadeTimer = 60;
 				fadeDone = false;
+				subWeaponType = EMPTY;
 				levelN--;
 				health = 16;
 				lives--;
@@ -304,19 +366,23 @@ void Game::Render()
 		break;
 
 	case GameState::Running:
+		DrawHUD();
 		//Draw level, includes player, enemies etc
 		levels[levelN].DrawLevel(tm, renderer, camera, frameCount);		
 
 		//Draw the HUD
-		DrawHUD();
+		//DrawHUD();
 		break;
 
 	case GameState::Door:
+
+		DrawHUD();
 		//Draw level without enemies and objects
-		levels[levelN].DrawLevelChange(tm, renderer, camera, frameCount, doorTimer);		
+		levels[levelN].DrawLevelChange(tm, renderer, camera, frameCount, doorTimer);	
+
 
 		//Draw the HUD
-		DrawHUD();
+		//DrawHUD();
 		break;
 
 	case GameState::GameOver:
@@ -358,6 +424,19 @@ void Game::DrawHUD()
 	//Draw stage
 	tm->drawFrame("numbers", 465, 15, 16, 16, 1, stage / 10 % 10, renderer, SDL_FLIP_NONE);
 	tm->drawFrame("numbers", 481, 15, 16, 16, 1, stage % 10, renderer, SDL_FLIP_NONE);
+
+	//Draw SubWeapon
+	switch (levels[levelN].player.SubWeapon())
+	{
+	case EMPTY:
+		break;
+	case DAGGER:
+		tm->draw("dagger", 272, 38, 32, 32, renderer, SDL_FLIP_NONE);
+		break;
+
+	default:
+		break;
+	}
 
 	//Draw health
 	for (int i = 0; i < levels[levelN].player.Health(); i++)
@@ -433,6 +512,8 @@ void Game::LoadAssets()
 	tm->load("Assets/Sprites/Player/player_damaged.png", "player_damaged", renderer);
 	tm->load("Assets/Sprites/Player/player_dead.png", "player_dead", renderer);
 	tm->load("Assets/Sprites/Player/player_flash.png", "player_flash", renderer);
+	tm->load("Assets/Sprites/Player/player_throwing.png", "player_throwing", renderer);
+	tm->load("Assets/Sprites/Player/player_stairs_up_throwing.png", "player_stairs_up_throwing", renderer);
 
 	//Player SFX
 	sm->load("Assets/Sounds/player_whip.wav", "player_whip");
@@ -441,6 +522,8 @@ void Game::LoadAssets()
 	sm->setVolume("player_hurt", 48);
 	sm->load("Assets/Sounds/player_fall.wav", "player_fall");
 	sm->setVolume("player_fall", 32);
+	sm->load("Assets/Sounds/player_throw.wav", "player_throw");
+	sm->setVolume("player_throw", 32);
 
 	//Sprite popup assets
 	tm->load("Assets/Sprites/Misc/hit.png", "hit", renderer);
@@ -460,16 +543,20 @@ void Game::LoadAssets()
 	tm->load("Assets/Sprites/Items/red_moneybag.png", "red_moneybag", renderer);
 	tm->load("Assets/Sprites/Items/purple_moneybag.png", "purple_moneybag", renderer);
 	tm->load("Assets/Sprites/Items/white_moneybag.png", "white_moneybag", renderer);
+	tm->load("Assets/Sprites/Items/dagger.png", "dagger", renderer);
 
 	//SFX
 	sm->load("Assets/Sounds/break.wav", "break");
 	sm->setVolume("break", 32);
-	sm->load("Assets/Sounds/whip.wav", "whip");
-	sm->setVolume("whip", 32);
+	sm->load("Assets/Sounds/weapon.wav", "weapon");
+	sm->setVolume("weapon", 32);
 	sm->load("Assets/Sounds/heart.wav", "heart");
 	sm->setVolume("heart", 32);
 	sm->load("Assets/Sounds/moneybag.wav", "moneybag");
 	sm->setVolume("moneybag", 32);
+	sm->load("Assets/Sounds/enter_castle.wav", "enter_castle");
+	sm->setVolume("enter_castle", 32);
+	
 
 	
 }
@@ -618,6 +705,7 @@ void Game::RunDoor()
 	if (doorTimer < 288 && doorTimer >= 160)
 	{
 		camera.x += 2;
+
 	}
 
 	if (doorTimer < 160)
@@ -626,7 +714,11 @@ void Game::RunDoor()
 	if (doorDone)
 	{
 		levels[levelN];
-		levelN++;
+		if (levelN == 2)
+			levelN += 2;
+		else
+			levelN++;
+
 
 		std::string levelID = "level";
 		levelID.append(std::to_string(levelN));
@@ -639,10 +731,23 @@ void Game::RunDoor()
 		levels[levelN].player.SetHealth(health);
 		levels[levelN].player.SetLives(lives);
 		levels[levelN].player.SetAmmo(ammo);
+		levels[levelN].player.SetSubWeapon(subWeaponType);
 		levels[levelN].player.SetAlive();
 		deathTimer = 180;
+		camera.x = 0;
+		camera.y = 0;
 		gameState = GameState::Running;
 	}
+}
+
+//Set the player stats for next level load
+void Game::SetPlayerStats()
+{
+	health = levels[levelN].player.Health();
+	lives = levels[levelN].player.Lives();
+	ammo = levels[levelN].player.Ammo();
+	subWeaponType = levels[levelN].player.SubWeapon();
+	whipLevel = levels[levelN].player.WhipLevel();
 }
 
 

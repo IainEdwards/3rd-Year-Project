@@ -9,12 +9,24 @@ Level::~Level()
 {
 }
 
+void Level::SetPreviousLevelSpawn(bool spawnOne, bool spawnTwo)
+{
+	previousLevel = spawnOne;
+	previousLevel2 = spawnTwo;
+}
+
+void Level::SetNextLevelSpawn(bool spawnTwo)
+{
+	secondExit = spawnTwo;
+}
+
 void Level::LoadLevel(std::string levelID, int levelN, TextureManager* tm, SDL_Renderer* renderer, SoundManager* sm)
 {
 	enemies.clear();
 	objects.clear();
 	pickups.clear();
 	popups.clear();
+	projectiles.clear();
 
 	levelName = levelID;	
 
@@ -38,6 +50,14 @@ void Level::LoadLevel(std::string levelID, int levelN, TextureManager* tm, SDL_R
 	case 2:
 		levelWidth = 1024;
 		break;
+	case 3:
+		levelWidth = 1024;
+		break;	
+
+	case 4:
+		levelWidth = 1536;
+		break;
+
 	default:
 		break;
 	}
@@ -51,9 +71,25 @@ void Level::LoadLevel(std::string levelID, int levelN, TextureManager* tm, SDL_R
 
 	player.SetLevelArea(levelWidth, levelHeight, totalTiles);
 
-	player.Reset(spawnPointX, spawnPointY);
+	if (!previousLevel && !previousLevel2 && !secondExit)
+		player.Reset(spawnPointX, spawnPointY);
+	else if (!previousLevel && !previousLevel2 && secondExit)
+		player.Reset(spawnPoint2X, spawnPoint2Y);
+	else if (previousLevel && !previousLevel2)
+		player.Reset(spawnPoint2X, spawnPoint2Y);
+	else if (!previousLevel && previousLevel2)
+		player.Reset(spawnPoint3X, spawnPoint3Y);
+
+	if (levelN == 3)			
+		player.SetOnStairs(false);
+		
+	if (levelN == 2 && previousLevel || levelN == 2 && previousLevel2)
+		player.SetOnStairs(true);
 
 	score = 0;	
+	previousLevel = false;
+	previousLevel2 = false;
+	secondExit = false;
 }
 
 void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
@@ -66,10 +102,19 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 
 	if (!pause)
 	{
+		if (player.SpawnProjectile())
+		{
+
+			if (!player.Flip())
+				SpawnProjectile(player.PosX(), player.PosY(), 1, player.SubWeapon());
+			else
+				SpawnProjectile(player.PosX(), player.PosY(), -1, player.SubWeapon());
+		}
+
 		SpawnEnemies(camera);
 
 		//Iterate through enemies to apply their physics and check for collisions
-		std::list<Enemy>::iterator it2 = enemies.begin();
+		std::list<Enemy>::iterator it2 = enemies.begin();			
 		while (it2 != enemies.end())
 		{
 			it2->ApplyPhysics();
@@ -81,7 +126,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 					player.takeHit(it2->Type());
 					sm->play("player_hurt");
 				}
-			}
+			}			
 
 			if (checkCollision(player.AttackBox(), it2->EnemyBox()))
 			{
@@ -95,15 +140,11 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 						it2 = enemies.erase(it2);
 						score += 100;						
 						sm->play("break");
-					}
-					/*else if (it2->PosX() < camera.x)
-					{
-						it2 = enemies.erase(it2);
-					}*/
+					}					
 				}
 			}
 			else
-				it2++;
+				it2++;				
 		}
 
 		//Iterate through objects to check for collisions
@@ -152,7 +193,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 					player.SetCurrentAnimation(PlayerAnimation::FLASH);
 					pause = true;
 					pauseTimer = 60;
-					sm->play("whip");
+					sm->play("weapon");
 					break;
 
 				case SMALL_HEART:
@@ -180,6 +221,11 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 					sm->play("moneybag");
 					break;
 
+				case DAGGER_DROP:
+					sm->play("weapon");
+					player.SetSubWeapon(SubWeaponType::DAGGER);
+					break;
+
 				default:
 					break;
 				}
@@ -198,6 +244,99 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				it4 = popups.erase(it4);
 			else
 				it4++;
+		}
+
+		std::list<SubWeapon>::iterator it5 = projectiles.begin();		
+		while (it5 != projectiles.end())
+		{
+			it5->ApplyPhysics();			
+
+			if (it5->SubWeaponBox().x < camera.x || it5->SubWeaponBox().x > camera.x + 512)
+			{
+				it5 = projectiles.erase(it5);
+				player.SetCurrentProjectiles(player.CurrentProjectiles() - 1);				
+			}
+			else
+				it5++;
+		}
+
+		//Check collision between projectiles and enemies
+		for (std::list<SubWeapon>::iterator i = projectiles.begin(); i != projectiles.end();)
+		{
+			for (std::list<Enemy>::iterator j = enemies.begin(); j != enemies.end();) 
+			{
+				if (checkCollision(i->SubWeaponBox(), j->EnemyBox()))
+				{
+
+					j->takeHit();
+					PopupSprite(j->EnemyBox().x, i->SubWeaponBox().y + 16, HIT);
+					i->SetCooldown(60);
+					if (j->HitPoints() <= 0)
+					{
+						PopupSprite(j->EnemyBox().x + 8, j->EnemyBox().y + 16, DEATH);
+						j = enemies.erase(j);						
+						score += 100;
+						sm->play("break");						
+					}
+				}
+				else
+				{
+					j++;
+				}
+			}
+
+			if (i->Cooldown() == 60)
+			{
+				i = projectiles.erase(i);
+				player.SetCurrentProjectiles(player.CurrentProjectiles() - 1);
+			}
+			else
+				i++;
+		}
+
+		//Check collision between projectiles and objects
+		for (std::list<SubWeapon>::iterator i = projectiles.begin(); i != projectiles.end();)
+		{
+			for (std::list<DestroyableObject>::iterator j = objects.begin(); j != objects.end();)
+			{
+				if (checkCollision(i->SubWeaponBox(), j->ObjectBox()))
+				{
+					switch (j->Type())
+					{
+					case TORCH:						
+						PopupSprite(j->ObjectBox().x, i->SubWeaponBox().y + 16, HIT);
+						SpawnPickup(j->ObjectBox().x + 16, j->ObjectBox().y, 16);
+						PopupSprite(j->ObjectBox().x + 8, j->ObjectBox().y + 16, DEATH);
+						break;
+
+					case CANDLE:						
+						PopupSprite(j->ObjectBox().x, i->SubWeaponBox().y + 16, HIT);
+						SpawnPickup(j->ObjectBox().x + 8, j->ObjectBox().y, 8);
+						PopupSprite(j->ObjectBox().x + 4, j->ObjectBox().y + 8, DEATH);
+						break;
+
+					default:
+						break;
+
+					}		
+					i->SetCooldown(60);	
+					j = objects.erase(j);
+					sm->play("break");
+									
+				}
+				else
+				{
+					j++;
+				}
+			}
+
+			if (i->Cooldown() == 60)
+			{
+				i = projectiles.erase(i);
+				player.SetCurrentProjectiles(player.CurrentProjectiles() - 1);
+			}
+			else
+				i++;
 		}
 
 		if (!player.PlayerDead() && !pause)
@@ -241,6 +380,12 @@ void Level::DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& came
 		it4->DrawPopup(tm, renderer, camera, frameCount);
 	}
 
+	std::list<SubWeapon>::iterator it5;
+	for (it5 = projectiles.begin(); it5 != projectiles.end(); it5++)
+	{
+		it5->DrawSubWeapon(tm, renderer, camera, frameCount);
+	}
+
 	//Draw Player, switch for various animations
 	player.Draw(tm, renderer, camera, frameCount);
 
@@ -253,12 +398,23 @@ void Level::DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& came
 
 void Level::DrawLevelChange(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount, int doorTimer)
 {
-	tm->draw(levelName, 0 - camera.x, 0 - camera.y, levelWidth + 512, levelHeight, renderer, SDL_FLIP_NONE);
+	if (levelName == "level1")
+	{
+		tm->draw(levelName, 0 - camera.x, 0 - camera.y, levelWidth + 512, levelHeight, renderer, SDL_FLIP_NONE);
+		if (doorTimer < 384 && doorTimer >= 376 || doorTimer < 296 && doorTimer >= 288)
+			tm->drawFrame("door", 3040 - camera.x, 112, 48, 96, 1, 1, renderer, SDL_FLIP_NONE);
+		if (doorTimer < 376 && doorTimer >= 296)
+			tm->drawFrame("door", 3056 - camera.x, 112, 48, 96, 1, 0, renderer, SDL_FLIP_NONE);
+	}		
 
-	if (doorTimer < 384 && doorTimer >= 376 || doorTimer < 296 && doorTimer >= 288)
-		tm->drawFrame("door", 3056 - camera.x, 112, 48, 96, 1, 1, renderer, SDL_FLIP_NONE);
-	if (doorTimer < 376 && doorTimer >= 296)
-		tm->drawFrame("door", 3056 - camera.x, 112, 48, 96, 1, 0, renderer, SDL_FLIP_NONE);
+	if (levelName == "level2")
+	{
+		tm->draw(levelName, 0 - camera.x, 0 - camera.y, levelWidth + 512, levelHeight, renderer, SDL_FLIP_NONE);
+		if (doorTimer < 384 && doorTimer >= 376 || doorTimer < 296 && doorTimer >= 288)
+			tm->drawFrame("door", 992 - camera.x, 112, 48, 96, 1, 1, renderer, SDL_FLIP_NONE);
+		if (doorTimer < 376 && doorTimer >= 296)
+			tm->drawFrame("door", 1008 - camera.x, 112, 48, 96, 1, 0, renderer, SDL_FLIP_NONE);
+	}
 
 	player.Draw(tm, renderer, camera, frameCount);
 }
@@ -348,14 +504,50 @@ bool Level::setTiles(std::string levelName)
 			spawnPointY = y;
 			levelTiles[i] = new Tile(x, y, '0');
 			break;
+		case '8':
+			//Player spawnpoint 2
+			spawnPoint2X = x - 12;
+			spawnPoint2Y = y;
+			levelTiles[i] = new Tile(x, y, '0');
+			break;
+		case '9':
+			//Player spawnpoint 3
+			spawnPoint3X = x - 12;
+			spawnPoint3Y = y;
+			levelTiles[i] = new Tile(x, y, '0');
+			break;
 		case 'X':
 			//Level exit
 			levelTiles[i] = new Tile(x, y, 'X');
 			break;
 
+		case 'W':
+			//Level exit 2
+			levelTiles[i] = new Tile(x, y, 'W');
+			break;
+
 		case 'D':
 			//Level door
 			levelTiles[i] = new Tile(x, y, 'D');
+			break;
+
+		case 'M':
+			//Slow walk to door right
+			levelTiles[i] = new Tile(x, y, 'W');
+			break;
+		case 'N':
+			//Slow walk to door left
+			levelTiles[i] = new Tile(x, y, 'V');
+			break;
+
+		case 'Z':
+			//Exit area backwards
+			levelTiles[i] = new Tile(x, y, 'Z');
+			break;
+
+		case 'Y':
+			//Exit area backwards
+			levelTiles[i] = new Tile(x, y, 'Y');
 			break;
 			
 		default:
@@ -463,7 +655,8 @@ void Level::SpawnEnemies(SDL_Rect& camera)
 	spawnCooldown--;
 	if (levelName == "level1")
 	{
-		if (player.PosX() < 832 && player.PosX() > 160 && spawnCooldown <= 0)
+		if (player.PosX() < 832 && player.PosX() > 160 && spawnCooldown <= 0 ||
+			player.PosX() < 2496 && player.PosX() > 2112 && spawnCooldown <= 0)
 		{	
 			Enemy e1, e2, e3;
 			e1.setEnemy(camera.x + 512, 336, EnemyType::GHOUL);
@@ -513,6 +706,10 @@ void Level::SpawnPickup(int x, int y, int offset)
 		newPickup.setPickup(x - offset, y, WHITE_MONEYBAG);
 		break;
 
+	case 'D':
+		newPickup.setPickup(x - offset, y, DAGGER_DROP);
+		break;
+
 	default:
 		break;
 	}	
@@ -526,4 +723,26 @@ void Level::PopupSprite(int x, int y, PopupType type)
 	newPopup.setPopup(x, y, type);
 
 	popups.push_back(newPopup);
+}
+
+void Level::SpawnProjectile(int x, int y, int directionValue, SubWeaponType type)
+{
+	SubWeapon newSubWeapon;
+
+	switch (type)
+	{
+	case EMPTY:
+		break;
+
+	case DAGGER:
+		newSubWeapon.setSubWeapon(x, y, directionValue, DAGGER);
+		break;
+
+	default:
+		break;
+	}
+	projectiles.push_back(newSubWeapon);
+
+	player.SetCurrentProjectiles(player.CurrentProjectiles() + 1);
+	player.SetSpawnProjectile(false);	
 }
