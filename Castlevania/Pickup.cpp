@@ -13,6 +13,11 @@ PickupType Pickup::Type()
 	return pickupType;
 }
 
+int Pickup::PickupTimer()
+{
+	return pickupTimer;
+}
+
 void Pickup::setPickup(int x, int y, PickupType type)
 {
 	pickupBox.x = x;
@@ -30,6 +35,10 @@ void Pickup::setPickup(int x, int y, PickupType type)
 
 	right = true;
 	stop = false;
+
+	pickupTimer = 0;
+
+	
 }
 
 void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
@@ -76,6 +85,13 @@ void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 		case DAGGER_DROP:
 			pickupBox.y += (int)round(velY);
 			break;
+
+		case SPIRIT_BALL:
+			pickupTimer++;
+
+			if (pickupTimer > 120)
+				pickupBox.y += 5;
+			break;
 		default:
 			break;
 		}
@@ -87,7 +103,11 @@ void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 		{
 			if (checkCollision(pickupBox, tiles[i]->Box()) && !stop)
 			{
-				pickupBox.y -= (int)round(velY) - 2;
+				if (pickupType == SPIRIT_BALL)
+					pickupBox.y -= 5;
+				else
+					pickupBox.y -= (int)round(velY) - 2;
+
 				velY = 0.0f;
 				velX = 0.0f;
 				stop = true;
@@ -99,7 +119,7 @@ void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 
 }
 
-void Pickup::DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera)
+void Pickup::DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount)
 {
 	switch (pickupType)
 	{
@@ -123,6 +143,13 @@ void Pickup::DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& ca
 		break;
 	case DAGGER_DROP:
 		tm->draw("dagger", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+
+	case SPIRIT_BALL:
+		if (pickupTimer > 60 && pickupTimer <= 120)
+			tm->drawFrame("spirit_ball", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, pickupTimer % 2 + 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+		else if (pickupTimer > 120)
+			tm->drawFrame("spirit_ball", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
 		break;
 
 	default:

@@ -7,6 +7,7 @@
 #include "Tile.h"
 #include "SoundManager.h"
 #include "Enemy.h"
+#include "Boss.h"
 #include "SubWeapon.h"
 
 enum PlayerAnimation
@@ -25,7 +26,8 @@ enum PlayerAnimation
 	STAIRS_UP_THROWING,
 	DAMAGED,
 	DEAD,
-	FLASH
+	FLASH,
+	BLANK
 };
 
 class Player
@@ -105,7 +107,8 @@ public:
 	//Health functions
 	int Health();
 	void SetHealth(int health);
-	void takeHit(EnemyType enemyType);
+	void takeHit(EnemyType enemyType, bool right);
+	void takeHitBoss(BossType bossType, bool right);
 	int HitCooldown();
 
 	//Lives and death functions
@@ -114,6 +117,7 @@ public:
 	void SetAlive();
 	void playerDeath();
 	bool PlayerDead();	
+	bool Splash();
 
 	//Ammo functions
 	int Ammo();
@@ -131,6 +135,8 @@ public:
 	//Whip functions
 	int WhipLevel();
 	void SetWhipLevel(int level);	
+
+	bool BossFight();
 
 private:
 
@@ -218,11 +224,15 @@ private:
 	bool damaged;
 	int flashTimer;
 	bool playerDead;	
+	bool splash;
 
 	//Variable for collecting whip
 	float whipFlash;
 
 	//Variable to turn on autowalk
 	bool autoWalk;
+
+	//Variable to turn on boss fight
+	bool bossFight;
 };
 #endif

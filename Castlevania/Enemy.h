@@ -3,6 +3,7 @@
 
 #include <SDL.h>
 #include "TextureManager.h"
+#include "Tile.h"
 
 enum EnemyType
 {
@@ -29,7 +30,7 @@ public:
 	Enemy();	
 	~Enemy();
 
-	void ApplyPhysics();
+	void ApplyPhysics(Tile *tiles[], int totalTiles);
 
 	void DrawEnemy(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 
@@ -42,12 +43,21 @@ public:
 
 	void setEnemy(int x, int y, EnemyType type);
 
+	bool checkCollision(SDL_Rect a, SDL_Rect b);
+
+	bool touchesWall(SDL_Rect box, Tile* tiles[], int totalTiles);
+
 	SDL_Rect EnemyBox();
 
 	int HitPoints();
-	void takeHit();
+	void takeHit(int whipLevel);
 
 	int getCooldown();	
+
+	void SetIdle(bool idleTo);
+
+	void GhoulPhysics(Tile *tiles[], int totalTiles);
+	void PantherPhysics(Tile *tiles[], int totalTiles);
 
 private:
 
@@ -56,12 +66,21 @@ private:
 	EnemyType enemyType;
 
 	bool flip;
+	bool idle;
 	
-	float velX;
-	float posX;
+	bool doJump;
+	bool jumping;
+	int jumpTimer;
+
+	float velX, velY;
+	float posX, posY;
 	int hitPoints;
 
 	int cooldown;
+
+	//for framecounting in 3s
+	int frameTimer;
+	int frameCounter;
 
 };
 

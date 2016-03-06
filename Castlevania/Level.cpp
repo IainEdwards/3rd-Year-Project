@@ -58,6 +58,10 @@ void Level::LoadLevel(std::string levelID, int levelN, TextureManager* tm, SDL_R
 		levelWidth = 1536;
 		break;
 
+	case 5:
+		levelWidth = 512;
+		break;
+
 	default:
 		break;
 	}
@@ -90,6 +94,10 @@ void Level::LoadLevel(std::string levelID, int levelN, TextureManager* tm, SDL_R
 	previousLevel = false;
 	previousLevel2 = false;
 	secondExit = false;
+
+	levelComplete = false;
+
+	playerSplash = true;
 }
 
 void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
@@ -117,26 +125,36 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 		std::list<Enemy>::iterator it2 = enemies.begin();			
 		while (it2 != enemies.end())
 		{
-			it2->ApplyPhysics();
+			it2->ApplyPhysics(levelTiles, totalTiles);
 
 			if (checkCollision(player.PlayerBox(), it2->EnemyBox()))
 			{
 				if (player.HitCooldown() <= 0 && !player.PlayerDead())
 				{
-					player.takeHit(it2->Type());
+					if (player.PlayerBox().x < it2->EnemyBox().x)
+						player.takeHit(it2->Type(), false);
+					else
+						player.takeHit(it2->Type(), true);
+
 					sm->play("player_hurt");
 				}
-			}			
+			}	
+
+			if (it2->Type() == PANTHER && it2->EnemyBox().x - player.PlayerBox().x < 128)
+			{
+				it2->SetIdle(false);
+			}
 
 			if (checkCollision(player.AttackBox(), it2->EnemyBox()))
 			{
 				if (it2->getCooldown() <= 0)
 				{
-					it2->takeHit();
+					it2->takeHit(player.WhipLevel());
 					PopupSprite(it2->EnemyBox().x, player.AttackBox().y - 4, HIT);
 					if (it2->HitPoints() <= 0)
 					{
-						PopupSprite(it2->EnemyBox().x + 8, it2->EnemyBox().y + 16, DEATH);
+						PopupSprite(it2->EnemyBox().x + (it2->EnemyBox().w / 2) - 8, 
+									it2->EnemyBox().y + (it2->EnemyBox().h / 2) - 16, DEATH);
 						it2 = enemies.erase(it2);
 						score += 100;						
 						sm->play("break");
@@ -208,16 +226,19 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 
 				case RED_MONEYBAG:
 					score += 100;
+					PopupSprite(it3->PickupBox().x, it3->PickupBox().y, RED_POINTS);
 					sm->play("moneybag");
 					break;
 
 				case PURPLE_MONEYBAG:
 					score += 400;
+					PopupSprite(it3->PickupBox().x, it3->PickupBox().y, PURPLE_POINTS);
 					sm->play("moneybag");
 					break;
 
 				case WHITE_MONEYBAG:
 					score += 700;
+					PopupSprite(it3->PickupBox().x, it3->PickupBox().y, WHITE_POINTS);
 					sm->play("moneybag");
 					break;
 
@@ -226,10 +247,24 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 					player.SetSubWeapon(SubWeaponType::DAGGER);
 					break;
 
+				case SPIRIT_BALL:
+					if (it3->PickupTimer() > 120)
+						levelComplete = true;
+					break;
+
+
 				default:
 					break;
 				}
-				it3 = pickups.erase(it3);
+				if (it3->Type() == PickupType::SPIRIT_BALL)
+				{
+					if (it3->PickupTimer() > 120)
+						it3 = pickups.erase(it3);
+					else
+						it3++;
+				}
+				else
+					it3 = pickups.erase(it3);
 			}
 			else
 				it3++;
@@ -240,7 +275,9 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 		{
 			it4->ApplyPhysics();
 
-			if (it4->Timer() >= 24)
+			if (it4->Timer() >= 24 && it4->Type() != SPLASH_LEFT && it4->Type() != SPLASH_RIGHT)
+				it4 = popups.erase(it4);
+			else if (it4->Timer() >= 60)
 				it4 = popups.erase(it4);
 			else
 				it4++;
@@ -268,7 +305,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				if (checkCollision(i->SubWeaponBox(), j->EnemyBox()))
 				{
 
-					j->takeHit();
+					j->takeHit(player.WhipLevel());
 					PopupSprite(j->EnemyBox().x, i->SubWeaponBox().y + 16, HIT);
 					i->SetCooldown(60);
 					if (j->HitPoints() <= 0)
@@ -339,12 +376,83 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				i++;
 		}
 
+		//Turn on boss for boss fight
+		if (player.BossFight())
+			levelBoss.setAwake();
+
+		//Boss physics and collisions
+		if (levelBoss.Awake())
+		{
+			levelBoss.ApplyPhysics(player.PosX(), player.PosY(), levelTiles);
+
+			SDL_Rect tempBox = levelBoss.BossBox();
+			tempBox.x += 16;
+			tempBox.w -= 32;
+
+			if (checkCollision(player.PlayerBox(), tempBox))
+			{
+				if (player.HitCooldown() <= 0 && !player.PlayerDead())
+				{
+					if (player.PlayerBox().x < levelBoss.BossBox().x + 32)
+						player.takeHitBoss(levelBoss.Type(), false);
+					else
+						player.takeHitBoss(levelBoss.Type(), true);
+
+					sm->play("player_hurt");
+				}
+			}
+
+			if (checkCollision(player.AttackBox(), levelBoss.BossBox()))
+			{
+				if (levelBoss.getCooldown() <= 0)
+				{
+					levelBoss.takeHit(player.WhipLevel());
+					sm->play("break");
+
+					if (!player.Flip())
+						PopupSprite(player.AttackBox().x + 80, player.AttackBox().y - 4, HIT);
+					else
+						PopupSprite(player.AttackBox().x, player.AttackBox().y - 4, HIT);
+
+					if (levelBoss.Health() <= 0)
+					{
+						PopupSprite(levelBoss.BossBox().x + 16, levelBoss.BossBox().y - 8, DEATH);
+						PopupSprite(levelBoss.BossBox().x + 32, levelBoss.BossBox().y - 8, DEATH);
+						PopupSprite(levelBoss.BossBox().x + 48, levelBoss.BossBox().y - 8, DEATH);
+						PopupSprite(levelBoss.BossBox().x + 64, levelBoss.BossBox().y - 8, DEATH);
+
+						PopupSprite(levelBoss.BossBox().x + 16, levelBoss.BossBox().y + 24, DEATH);
+						PopupSprite(levelBoss.BossBox().x + 32, levelBoss.BossBox().y + 24, DEATH);
+						PopupSprite(levelBoss.BossBox().x + 48, levelBoss.BossBox().y + 24, DEATH);
+						PopupSprite(levelBoss.BossBox().x + 64, levelBoss.BossBox().y + 24, DEATH);
+
+						Pickup newPickup;
+						newPickup.setPickup(1264, 240, PickupType::SPIRIT_BALL);
+						pickups.push_back(newPickup);
+
+
+						levelBoss.setBoss(0, 0, BossType::FINISHED, totalTiles);
+					}
+				}
+			}
+		}
+		if (player.Splash() && playerSplash)
+		{			
+			PopupSprite(player.PlayerBox().x - 32, player.PlayerBox().y + 32, SPLASH_LEFT);
+			PopupSprite(player.PlayerBox().x + 32, player.PlayerBox().y + 32, SPLASH_RIGHT);
+			PopupSprite(player.PlayerBox().x, player.PlayerBox().y - 32, SPLASH_RIGHT);
+			sm->play("splash_down");
+			playerSplash = false;
+		}
+
 		if (!player.PlayerDead() && !pause)
 		{
 			player.ApplyPhysics(levelTiles);
 			player.PlaySounds(sm);
 			player.setCamera(camera);
 		}
+
+		
 	}	
 }
 
@@ -371,7 +479,7 @@ void Level::DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& came
 	std::list<Pickup>::iterator it3;
 	for (it3 = pickups.begin(); it3 != pickups.end(); it3++)
 	{
-		it3->DrawPickup(tm, renderer, camera);
+		it3->DrawPickup(tm, renderer, camera, frameCount);
 	}
 
 	std::list<SpritePopup>::iterator it4;
@@ -385,6 +493,9 @@ void Level::DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& came
 	{
 		it5->DrawSubWeapon(tm, renderer, camera, frameCount);
 	}
+
+	//Draw Boss
+	levelBoss.DrawBoss(tm, renderer, camera, frameCount);
 
 	//Draw Player, switch for various animations
 	player.Draw(tm, renderer, camera, frameCount);
@@ -454,6 +565,7 @@ bool Level::setTiles(std::string levelName)
 
 		Enemy newEnemy;
 		DestroyableObject newObject;
+		//Boss levelBoss;
 
 		switch (tileType)
 		{
@@ -469,6 +581,10 @@ bool Level::setTiles(std::string levelName)
 			//platform tile
 			levelTiles[i] = new Tile(x, y, tileType);
 			break;
+		case '6':
+			//Water location
+			levelTiles[i] = new Tile(x, y, '6');
+			break;
 		case 'R':
 			//Stair tiles going right and up
 			levelTiles[i] = new Tile(x - 16, y, tileType);
@@ -480,7 +596,10 @@ bool Level::setTiles(std::string levelName)
 		case 'S':
 			//Special case, platform next to top of stair
 			levelTiles[i] = new Tile(x, y, tileType);
-			break;			
+			break;		
+
+
+////////OBJECTS//////////////////////////////////////////////////
 		case 'T':
 			//Torch objects
 			newObject.setObject(x - 16, y, ObjectType::TORCH);
@@ -493,11 +612,24 @@ bool Level::setTiles(std::string levelName)
 			objects.push_back(newObject);
 			levelTiles[i] = new Tile(x, y, '0');
 			break;
-		case 'G':			
+
+
+////////ENEMIES//////////////////////////////////////////////////
+		case 'g':	
+			//Ghoul spawnpoint
 			newEnemy.setEnemy(x, y - 32, EnemyType::GHOUL);
 			enemies.push_back(newEnemy);
 			levelTiles[i] = new Tile(x, y, '0');
 			break;
+
+		case 'p':
+			//Panther spawnpoint
+			newEnemy.setEnemy(x, y, EnemyType::PANTHER);
+			enemies.push_back(newEnemy);
+			levelTiles[i] = new Tile(x, y, '0');
+			break;
+
+////////SPAWNPOINTS AND EXITS////////////////////////////////////
 		case 'P':
 			//Player spawnpoint
 			spawnPointX = x - 12;
@@ -549,6 +681,26 @@ bool Level::setTiles(std::string levelName)
 			//Exit area backwards
 			levelTiles[i] = new Tile(x, y, 'Y');
 			break;
+
+////////BOSS FIGHT TILES/////////////////////////////////////////////
+		case '4':
+			//Boss fight engage
+			levelTiles[i] = new Tile(x, y, 'B');
+			break;
+
+		case '3':
+			//Boss fight wall tiles, to prevent leaving area
+			levelTiles[i] = new Tile(x, y, '3');
+			break;
+
+		case 'B':
+			//Boss location
+			levelTiles[i] = new Tile(x, y, '0');
+			levelBoss.setBoss(x - 18, y + 10, BossType::VAMPIRE_BAT, totalTiles);
+			break;
+
+		
+
 			
 		default:
 			break;
@@ -650,6 +802,11 @@ int Level::Score()
 	return score;
 }
 
+void Level::SetScore(int value)
+{
+	score = value;
+}
+
 void Level::SpawnEnemies(SDL_Rect& camera)
 {
 	spawnCooldown--;
@@ -745,4 +902,9 @@ void Level::SpawnProjectile(int x, int y, int directionValue, SubWeaponType type
 
 	player.SetCurrentProjectiles(player.CurrentProjectiles() + 1);
 	player.SetSpawnProjectile(false);	
+}
+
+bool Level::LevelComplete()
+{
+	return levelComplete;
 }

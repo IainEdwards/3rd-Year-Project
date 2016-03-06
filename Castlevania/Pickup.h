@@ -38,13 +38,15 @@ public:
 
 	void ApplyPhysics(Tile *tiles[], int totalTiles);
 
-	void DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera);
+	void DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 
 	SDL_Rect PickupBox();
 
 	PickupType Type();
 
 	bool checkCollision(SDL_Rect a, SDL_Rect b);
+
+	int PickupTimer();
 
 private:
 
@@ -56,6 +58,8 @@ private:
 	int startX, offsetX;
 
 	bool right, stop;
+
+	int pickupTimer;
 
 
 

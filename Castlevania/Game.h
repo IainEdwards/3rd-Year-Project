@@ -15,6 +15,8 @@ enum GameState
 	Fade,
 	Running,
 	Door,
+	LevelComplete,
+	Map,
 	GameOver
 };
 
@@ -37,6 +39,9 @@ public:
 	void RunTitle();
 	void RunIntro();
 	void RunDoor();
+	void RunLevelComplete();
+	void RunMap();
+	void RunGameOver();
 
 	void SetPlayerStats();
 

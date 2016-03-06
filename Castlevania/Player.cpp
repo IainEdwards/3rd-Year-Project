@@ -96,6 +96,11 @@ void Player::SetWhipLevel(int value)
 	whipLevel = value;
 }
 
+bool Player::BossFight()
+{
+	return bossFight;
+}
+
 int Player::HitCooldown()
 {
 	return hitCooldown;
@@ -108,6 +113,10 @@ bool Player::PlayerDead()
 void Player::SetAlive()
 {
 	playerDead = false;
+}
+bool Player::Splash()
+{
+	return splash;
 }
 
 PlayerAnimation Player::Animation()
@@ -819,6 +828,15 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 			}
 		}
 
+		//If in a boss fight, wall tiles activate
+		if (tiles[i]->Type() == '3' && bossFight)
+		{			
+			if (checkCollision(box, tiles[i]->Box()))
+			{
+				return true;
+			}
+		}
+
 		//Special case, if tile is next to top of stairs on a platform
 		if (tiles[i]->Type() == 'S')
 		{
@@ -870,6 +888,24 @@ bool Player::touchesWall(SDL_Rect box, Tile* tiles[])
 			if (checkCollision(box, tiles[i]->Box()))
 			{				
 				autoWalk = true;				
+			}
+		}
+
+		if (tiles[i]->Type() == 'B')
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{
+				bossFight = true;
+			}
+		}
+
+		if (tiles[i]->Type() == '6')
+		{
+			if (checkCollision(box, tiles[i]->Box()))
+			{
+				currentAnimation = BLANK;
+				splash = true;
+				playerDead = true;
 			}
 		}
 	}
@@ -1197,13 +1233,17 @@ bool Player::checkCollision(SDL_Rect a, SDL_Rect b)
 
 void Player::setCamera(SDL_Rect& camera)
 {
-	//Center the camera over the player
-	if (!onStairs)
-		camera.x = (playerBox.x + PLAYER_WIDTH / 2) - SCREEN_WIDTH / 2;
+	//Camera wont move during a boss fight
+	if (!bossFight && !playerDead)
+	{
+		//Center the camera over the player
+		if (!onStairs)
+			camera.x = (playerBox.x + PLAYER_WIDTH / 2) - SCREEN_WIDTH / 2;
 
-	//If on stairs, smooth the camera movement
-	if (onStairs)
-		camera.x = (cameraStart + cameraStep + PLAYER_WIDTH / 2) - SCREEN_WIDTH / 2;
+		//If on stairs, smooth the camera movement
+		if (onStairs)
+			camera.x = (cameraStart + cameraStep + PLAYER_WIDTH / 2) - SCREEN_WIDTH / 2;
+	}	
 	
 	//Keep the camera in bounds
 	if (camera.x < 0)
@@ -1256,10 +1296,12 @@ void Player::Reset(int x, int y)//, int healthValue, int livesValue, int ammoVal
 	reachedEntrance = false;
 	reachedEntrance2 = false;	
 	playerDead = false;
+	splash = false;
 	currentProjectiles = 0;
 	maxProjectiles = 1;
 	spawnProjectile = false;
 	autoWalk = false;
+	bossFight = false;
 
 	frameTime = 0;
 	currentFrame = 0;
@@ -1445,6 +1487,9 @@ void Player::Draw(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, 
 			tm->drawFrame("player_stairs_up_throwing", playerBox.x - camera.x - 64 - 2, playerBox.y - camera.y, 128, Player::PLAYER_HEIGHT, flashTimer % 2 + 1, currentFrame, renderer, SDL_FLIP_HORIZONTAL);
 		break;
 
+	case BLANK:
+		break;
+
 
 	default:
 		break;
@@ -1508,7 +1553,7 @@ void Player::SetLevelArea(int width, int height, int tiles)
 	totalTiles = tiles;	
 }
 
-void Player::takeHit(EnemyType enemyType)
+void Player::takeHit(EnemyType enemyType, bool right)
 {
 	switch (enemyType)
 	{
@@ -1530,10 +1575,16 @@ void Player::takeHit(EnemyType enemyType)
 		jumpTime = 60;
 		velY = -4.5f;
 
-		if (!flip)
+		if (!right)
+		{
 			velX = -2;
+			flip = false;
+		}
 		else
+		{
 			velX = 2;
+			flip = true;
+		}
 	}	
 	else
 	{
@@ -1541,6 +1592,47 @@ void Player::takeHit(EnemyType enemyType)
 		flashTimer = 80;
 	}
 	
+}
+
+void Player::takeHitBoss(BossType bossType, bool right)
+{
+	switch (bossType)
+	{
+	case VAMPIRE_BAT:
+		health -= 2;
+		break;
+
+	default:
+		break;
+	}
+
+	if (!onStairs)
+	{
+		currentAnimation = DAMAGED;
+		hitCooldown = 120;
+		damaged = true;
+		jumping = true;
+		onGround = false;
+		jumpTime = 60;
+		velY = -4.5f;
+
+		if (!right)
+		{
+			velX = -2;
+			flip = false;
+		}
+		else
+		{
+			velX = 2;
+			flip = true;
+		}
+	}
+	else
+	{
+		hitCooldown = 80;
+		flashTimer = 80;
+	}
+
 }
 
 void Player::playerDeath()
@@ -1552,4 +1644,5 @@ void Player::playerDeath()
 	currentAnimation = DEAD;
 	currentSubWeapon = EMPTY;
 	lives--;
+	bossFight = false;
 }

@@ -8,6 +8,8 @@ enum PopupType
 {
 	HIT,
 	DEATH,
+	SPLASH_LEFT,
+	SPLASH_RIGHT,
 	RED_POINTS,
 	PURPLE_POINTS,
 	WHITE_POINTS
@@ -36,7 +38,10 @@ public:
 
 private:
 
-	int timer;
+	int timer;	
+
+	float velX, velY;
+	float posX, posY;
 
 	SDL_Rect popupBox;
 

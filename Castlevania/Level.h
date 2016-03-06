@@ -9,6 +9,7 @@
 #include "Tile.h"
 #include "Player.h"
 #include "Enemy.h"
+#include "Boss.h"
 #include "DestroyableObject.h"
 #include "Pickup.h"
 #include "SpritePopup.h"
@@ -52,6 +53,8 @@ public:
 
 	void SpawnProjectile(int x, int y, int directionValue, SubWeaponType type);
 
+	Boss levelBoss;
+
 	//Tile constants
 	const int TILE_WIDTH = 32;
 	const int TILE_HEIGHT = 32;
@@ -64,11 +67,15 @@ public:
 
 	int Score();
 
+	void SetScore(int value);
+
 	void SpawnEnemies(SDL_Rect& camera);	
 
 	void SetPreviousLevelSpawn(bool spawnOne, bool spawnTwo);
 
 	void SetNextLevelSpawn(bool spawnTwo);
+
+	bool LevelComplete();
 
 
 private:
@@ -92,6 +99,10 @@ private:
 
 	bool previousLevel, previousLevel2;
 	bool secondExit;
+
+	bool levelComplete;
+
+	bool playerSplash;
 };
 
 #endif

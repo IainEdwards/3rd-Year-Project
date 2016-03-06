@@ -10,18 +10,18 @@
 #include "SoundManager.h"
 #include "MusicManager.h"
 
-GameState gameState = GameState::Title;
+GameState gameState = GameState::Fade;
 
 TextureManager *tm = new TextureManager();
 SoundManager *sm = new SoundManager();
 MusicManager *mm = new MusicManager();
 
-Level levels[5];
-int levelN = -1;
+Level levels[20];
+int levelN = 0;
 
-int health, lives, ammo, stage, whipLevel, bosshealth;
+int health, lives, ammo, stage, whipLevel;
 SubWeaponType subWeaponType;
-int totalScore, levelScore, prevScore;
+int totalScore, prevScore;
 int deathTimer;
 
 SDL_Window* window;
@@ -51,8 +51,25 @@ bool fadeDone;
 int doorTimer;
 bool doorDone;
 
+bool changeMusic;
+
 bool previousLevel, previousLevel2;
 bool secondExit;
+
+//Variables for levelComplete
+int levelCompleteTimer;
+int addScoreTimer;
+bool heartScore;
+bool goToMap;
+
+//Variables for map
+int mapX;
+int playerX;
+
+//Variables for game over
+int heartY;
+int selectTimer;
+bool gameoverMusic;
 
 //Game time variables
 int gameTime;
@@ -82,15 +99,15 @@ Game::Game()
 	//Initialise the camera
 	camera = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 
-	health = 16;
-	bosshealth = 16;
+	health = 16;	
 	ammo = 5;
 	lives = 3;
 	whipLevel = 1;
 	totalScore = 0;
 	subWeaponType = SubWeaponType::EMPTY;
 	previousLevel = false;
-
+	previousLevel2 = false;
+	secondExit = false;
 	stage = 1;
 
 }
@@ -121,14 +138,17 @@ void Game::HandleGameState()
 
 		if (fadeDone)
 		{		
-			levels[5];
+			levels[10];
 			levelN++;	
 
 			if (levelN != 0 && levelN != 1 && levelN != 3 && !previousLevel && !previousLevel2 && !secondExit)
 				stage++;
 
-			if (levelN == 0)
+			if (levelN == 0 || levelN == 1)
 				gameTime = 300;
+
+			if (levelN == 5)
+				gameTime = 400;
 
 			std::string levelID = "level";
 			levelID.append(std::to_string(levelN));
@@ -151,8 +171,8 @@ void Game::HandleGameState()
 			previousLevel2 = false;
 			secondExit = false;
 			
-			levels[levelN].LoadLevel(levelID, levelN, tm, renderer, sm);						
-			levelScore = 0;
+			levels[levelN].LoadLevel(levelID, levelN, tm, renderer, sm);	
+			levels[levelN].SetScore(0);
 			prevScore = totalScore;	
 			levels[levelN].player.SetWhipLevel(whipLevel);
 			levels[levelN].player.SetHealth(health);
@@ -161,6 +181,7 @@ void Game::HandleGameState()
 			levels[levelN].player.SetSubWeapon(subWeaponType);
 			levels[levelN].player.SetAlive();				
 			deathTimer = 180;		
+			changeMusic = true;
 
 			gameState = GameState::Running;
 		}
@@ -174,7 +195,16 @@ void Game::HandleGameState()
 		RunDoor();		
 		break;
 
+	case GameState::LevelComplete:
+		RunLevelComplete();
+		break;
+
+	case GameState::Map:
+		RunMap();
+		break;
+
 	case GameState::GameOver:
+		RunGameOver();
 		break;
 	
 	default:
@@ -189,6 +219,10 @@ void Game::Update()
 
 	while (running)
 	{
+
+		//Calculate the total score		
+		totalScore = prevScore + levels[levelN].Score();
+
 		//Handle events on queue
 		while (SDL_PollEvent(&Event) != 0)
 		{
@@ -213,14 +247,26 @@ void Game::Update()
 		}
 
 		//Update the level
-		levels[levelN].UpdateLevel(camera, sm);	
+		levels[levelN].UpdateLevel(camera, sm);
+
+		//Check if boss fight, to change music
+		if (levels[levelN].player.BossFight() && changeMusic)
+		{
+			Mix_FadeOutMusic(2000);
+			changeMusic = false;
+		}
 
 		//Check if music is playing, if not then play
-		if (Mix_PlayingMusic() == 0 && !levels[levelN].player.PlayerDead())
+		if (Mix_PlayingMusic() == 0 && !levels[levelN].player.PlayerDead() && !levels[levelN].player.BossFight())
 		{			
-			if (levelN >=0 && levelN <=3)
+			if (levelN >= 0 && levelN <= 4)
 				mm->play("vampire_killer", 0);
-			
+			else if (levelN >= 5 && levelN <= 9)
+				mm->play("stalker", 0);
+		}
+		else if (Mix_PlayingMusic() == 0 && levels[levelN].player.BossFight())
+		{
+			mm->play("poison_mind", 0);
 		}
 
 		//Calculate change in time for accurate game timer
@@ -306,20 +352,55 @@ void Game::Update()
 
 			if (deathTimer < 60)
 			{
-				fadeTimer = 60;
-				fadeDone = false;
-				subWeaponType = EMPTY;
-				levelN--;
-				health = 16;
-				lives--;
-				gameState = GameState::Fade;
+				if (lives == 0)
+				{
+					heartY = 272;
+					gameoverMusic = false;
+					selectTimer = 0;
+					gameState = GameState::GameOver;
+				}
+				else
+				{
+					fadeTimer = 60;
+					fadeDone = false;
+					subWeaponType = EMPTY;
+					if (stage == 1)
+					{
+						gameTime = 300;
+						levelN = 0;
+					}
+					else if (stage == 2)
+					{
+						gameTime = 200;
+						levelN = 1;
+					}
+					else if (stage == 3)
+					{
+						gameTime = 100;
+						levelN = 3;
+					}
+					else if (stage == 4)
+					{
+						gameTime = 400;
+						levelN = 4;
+					}
+					health = 16;
+					lives--;
+					gameState = GameState::Fade;
+				}
 			}
 		}
 
-		//Calculate the total score
-		levelScore = levels[levelN].Score();
-		totalScore = levelScore + prevScore;
-
+		if (levels[levelN].LevelComplete())
+		{
+			Mix_HaltMusic();
+			mm->play("stage_clear", 0);
+			levelCompleteTimer = 0;
+			gameTime = 60;
+			heartScore = false;
+			goToMap = false;
+			gameState = GameState::LevelComplete;
+		}
 		break;		
 	}
 }
@@ -366,26 +447,54 @@ void Game::Render()
 		break;
 
 	case GameState::Running:
+		//Draw the HUD
 		DrawHUD();
+
 		//Draw level, includes player, enemies etc
 		levels[levelN].DrawLevel(tm, renderer, camera, frameCount);		
-
-		//Draw the HUD
-		//DrawHUD();
 		break;
 
 	case GameState::Door:
-
+		//Draw the HUD
 		DrawHUD();
 		//Draw level without enemies and objects
 		levels[levelN].DrawLevelChange(tm, renderer, camera, frameCount, doorTimer);	
-
-
-		//Draw the HUD
-		//DrawHUD();
 		break;
 
+	case GameState::LevelComplete:
+		DrawHUD();
+
+		levels[levelN].DrawLevel(tm, renderer, camera, frameCount);
+
+		if (goToMap && levelCompleteTimer > 60)
+			tm->draw("fade", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, renderer, SDL_FLIP_NONE);
+		break;
+
+	case GameState::Map:
+		
+		tm->draw("fade", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, renderer, SDL_FLIP_NONE);
+		tm->draw("map", mapX, 0, 784, SCREEN_HEIGHT, renderer, SDL_FLIP_NONE);
+
+		if (mapX == 0)
+		{
+			tm->drawFrame("map_bat", 182, 214, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+			tm->drawFrame("map_mark", 302, 274, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+			tm->drawFrame("player_introwalk", playerX, 306, 32, 64, 1, frameCount, renderer, SDL_FLIP_NONE);
+		}
+
+		DrawHUD();
+		break;
+
+
 	case GameState::GameOver:
+
+		tm->draw("game_over", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, renderer, SDL_FLIP_NONE);
+
+		tm->draw("game_over_heart", 176, heartY, 16, 16, renderer, SDL_FLIP_NONE);
+
+
+		DrawHUD();
+
 		break;
 	
 	default:
@@ -418,8 +527,8 @@ void Game::DrawHUD()
 	tm->drawFrame("numbers", 385, 31, 16, 16, 1, levels[levelN].player.Ammo() % 10, renderer, SDL_FLIP_NONE);
 
 	//Draw lives
-	tm->drawFrame("numbers", 369, 47, 16, 16, 1, levels[levelN].player.Lives() / 10 % 10, renderer, SDL_FLIP_NONE);
-	tm->drawFrame("numbers", 385, 47, 16, 16, 1, levels[levelN].player.Lives() % 10, renderer, SDL_FLIP_NONE);
+	tm->drawFrame("numbers", 369, 47, 16, 16, 1, lives / 10 % 10, renderer, SDL_FLIP_NONE);
+	tm->drawFrame("numbers", 385, 47, 16, 16, 1, lives % 10, renderer, SDL_FLIP_NONE);
 
 	//Draw stage
 	tm->drawFrame("numbers", 465, 15, 16, 16, 1, stage / 10 % 10, renderer, SDL_FLIP_NONE);
@@ -443,8 +552,12 @@ void Game::DrawHUD()
 		tm->draw("health", 112 + i * 8, 34, 8, 12, renderer, SDL_FLIP_NONE);
 
 	//Draw bosshealth
-	for (int i = 0; i < bosshealth; i++)
-		tm->draw("bosshealth", 112 + i * 8, 50, 8, 12, renderer, SDL_FLIP_NONE);
+	if (stage == 3)
+		for (int i = 0; i < levels[levelN].levelBoss.Health(); i++)
+			tm->draw("bosshealth", 112 + i * 8, 50, 8, 12, renderer, SDL_FLIP_NONE);
+	else
+		for (int i = 0; i < 16; i++)
+			tm->draw("bosshealth", 112 + i * 8, 50, 8, 12, renderer, SDL_FLIP_NONE);
 }
 
 void Game::LoadAssets()
@@ -476,6 +589,15 @@ void Game::LoadAssets()
 	sm->load("Assets/Sounds/door.wav", "door");
 	sm->setVolume("door", 32);
 
+	//Assets for map screen
+	tm->load("Assets/Backgrounds/map.png", "map", renderer);
+	tm->load("Assets/Sprites/Misc/map_bat.png", "map_bat", renderer);
+	tm->load("Assets/Sprites/Misc/map_mark.png", "map_mark", renderer);
+
+	//Assets for game over screen
+	tm->load("Assets/Backgrounds/game_over.png", "game_over", renderer);
+	tm->load("Assets/Sprites/Misc/game_over_heart.png", "game_over_heart", renderer);
+
 	//Assets for HUD
 	tm->load("Assets/HUD/hudbase.png", "hudbase", renderer);
 	tm->load("Assets/HUD/numbers.png", "numbers", renderer);
@@ -489,6 +611,10 @@ void Game::LoadAssets()
 	mm->load("Assets/Music/prologue.ogg", "prologue");
 	mm->load("Assets/Music/player_dead.ogg", "player_dead");
 	mm->load("Assets/Music/vampire_killer.ogg", "vampire_killer");
+	mm->load("Assets/Music/stalker.ogg", "stalker");
+	mm->load("Assets/Music/poison_mind.ogg", "poison_mind");
+	mm->load("Assets/Music/stage_clear.ogg", "stage_clear");
+	mm->load("Assets/Music/game_over.ogg", "game_over");
 
 	//Player assets
 	tm->load("Assets/Sprites/Player/player_idle.png", "player_idle", renderer);
@@ -528,13 +654,24 @@ void Game::LoadAssets()
 	//Sprite popup assets
 	tm->load("Assets/Sprites/Misc/hit.png", "hit", renderer);
 	tm->load("Assets/Sprites/Misc/death.png", "death", renderer);
+	tm->load("Assets/Sprites/Misc/splash.png", "splash", renderer);
+	tm->load("Assets/Sprites/Misc/100.png", "100", renderer);
+	tm->load("Assets/Sprites/Misc/400.png", "400", renderer);
+	tm->load("Assets/Sprites/Misc/700.png", "700", renderer);
 
 	//Enemy assets
 	tm->load("Assets/Sprites/Enemies/ghoul.png", "ghoul", renderer);
+	tm->load("Assets/Sprites/Enemies/panther_idle.png", "panther_idle", renderer);
+	tm->load("Assets/Sprites/Enemies/panther_running.png", "panther_running", renderer);
+	tm->load("Assets/Sprites/Enemies/panther_jumping.png", "panther_jumping", renderer);
 
 	//Object assets
 	tm->load("Assets/Sprites/Misc/torch.png", "torch", renderer);
 	tm->load("Assets/Sprites/Misc/candle.png", "candle", renderer);
+
+	//Boss assets
+	tm->load("Assets/Sprites/Bosses/vampire_bat.png", "vampire_bat", renderer);
+	tm->load("Assets/Sprites/Bosses/vampire_bat_idle.png", "vampire_bat_idle", renderer);
 
 	//Item assets
 	tm->load("Assets/Sprites/Items/whip.png", "whip", renderer);
@@ -544,6 +681,8 @@ void Game::LoadAssets()
 	tm->load("Assets/Sprites/Items/purple_moneybag.png", "purple_moneybag", renderer);
 	tm->load("Assets/Sprites/Items/white_moneybag.png", "white_moneybag", renderer);
 	tm->load("Assets/Sprites/Items/dagger.png", "dagger", renderer);
+
+	tm->load("Assets/Sprites/Items/spirit_ball.png", "spirit_ball", renderer);
 
 	//SFX
 	sm->load("Assets/Sounds/break.wav", "break");
@@ -556,6 +695,18 @@ void Game::LoadAssets()
 	sm->setVolume("moneybag", 32);
 	sm->load("Assets/Sounds/enter_castle.wav", "enter_castle");
 	sm->setVolume("enter_castle", 32);
+	sm->load("Assets/Sounds/time_score.wav", "time_score");
+	sm->setVolume("time_score", 16);
+	sm->load("Assets/Sounds/heart_score.wav", "heart_score");
+	sm->setVolume("heart_score", 16);
+	sm->load("Assets/Sounds/player_moving.wav", "player_moving");
+	sm->setVolume("player_moving", 32);
+	sm->load("Assets/Sounds/game_over_heart.wav", "game_over_heart");
+	sm->setVolume("game_over_heart", 32);
+	sm->load("Assets/Sounds/splash_up.wav", "splash_up");
+	sm->setVolume("splash_up", 32);
+	sm->load("Assets/Sounds/splash_down.wav", "splash_down");
+	sm->setVolume("splash_down", 32);
 	
 
 	
@@ -724,8 +875,7 @@ void Game::RunDoor()
 		levelID.append(std::to_string(levelN));
 
 		levels[levelN].LoadLevel(levelID, levelN, tm, renderer, sm);
-		stage++;
-		levelScore = 0;
+		stage++;		
 		prevScore = totalScore;		
 		levels[levelN].player.SetWhipLevel(whipLevel);
 		levels[levelN].player.SetHealth(health);
@@ -740,9 +890,183 @@ void Game::RunDoor()
 	}
 }
 
+//Run the level complete sequence
+void Game::RunLevelComplete()
+{
+	levelCompleteTimer++;
+	addScoreTimer++;
+
+	if (levels[levelN].player.Health() < 16 && levelCompleteTimer % 10 == 0)
+	{
+		levels[levelN].player.SetHealth(levels[levelN].player.Health() + 1);
+	}
+
+	if (levelCompleteTimer > 240 && !heartScore)
+	{
+		if (gameTime > 1)
+		{					
+			gameTime--;
+			totalScore += 10;					
+		}
+		if (gameTime <= 1)
+		{			
+			totalScore += 10;
+			gameTime = 0;	
+			heartScore = true;
+			levelCompleteTimer = 0;
+		}
+		if (addScoreTimer > 7)
+		{
+			Mix_HaltChannel(-1);
+			sm->play("time_score");
+			addScoreTimer = 0;
+		}
+	}
+
+	if (levelCompleteTimer > 60 && heartScore && !goToMap)
+	{
+		if (levels[levelN].player.Ammo() > 1 && addScoreTimer > 8)
+		{
+			Mix_HaltChannel(-1);
+			sm->play("heart_score");
+			levels[levelN].player.SetAmmo(levels[levelN].player.Ammo() - 1);
+			totalScore += 100;
+			addScoreTimer = 0;
+		}
+		if (levels[levelN].player.Ammo() > 0 && addScoreTimer > 8)
+		{
+			Mix_HaltChannel(-1);
+			sm->play("heart_score");
+			levels[levelN].player.SetAmmo(0);
+			addScoreTimer = 0;	
+			totalScore += 100;
+			goToMap = true;
+			levelCompleteTimer = 0;
+		}
+	}
+
+	if (levelCompleteTimer > 120 && goToMap)
+	{
+		stage += 1;
+		mapX = 512;
+		playerX = 0;
+		gameState = GameState::Map;
+	}
+}
+
+//Run the map screen 
+void Game::RunMap()
+{
+	frameTime++;
+	if (FPS / frameTime == 6)
+	{
+		frameTime = 0;
+		frameCount++;
+		if (frameCount >= 4)
+			frameCount = 0;
+	}
+
+	if (mapX > 0)
+		mapX -= 4;
+	else if (mapX < 0)
+		mapX = 0;
+
+	if (mapX == 0)
+	{
+		playerX += 2;
+		if (playerX % 40 == 0)
+		{
+			Mix_HaltChannel(-1);
+			sm->play("player_moving");
+		}		
+	}	
+
+	if (playerX >= 480)
+	{
+		fadeTimer = 60;
+		fadeDone = false;
+		gameState = GameState::Fade;
+	}
+}
+
+//Run the game over screen
+void Game::RunGameOver()
+{
+	if (!gameoverMusic)
+	{	
+		Mix_HaltMusic();
+		mm->play("game_over", 0);
+		gameoverMusic = true;
+	}
+
+	selectTimer++;
+
+	SDL_Event Event;
+	while (SDL_PollEvent(&Event) != 0)
+	{
+		if (Event.key.keysym.sym == SDLK_DOWN && selectTimer > 15)
+		{
+			if (heartY == 272)
+			{
+				heartY = 320;
+				sm->play("game_over_heart");
+				selectTimer = 0;
+			}
+			else if (heartY == 320)
+			{
+				heartY = 272;
+				sm->play("game_over_heart");
+				selectTimer = 0;
+			}
+		}
+		if (Event.key.keysym.sym == SDLK_UP && selectTimer > 15)
+		{
+			if (heartY == 272)
+			{
+				heartY = 320;
+				sm->play("game_over_heart");
+				selectTimer = 0;
+			}
+			else if (heartY == 320)
+			{
+				heartY = 272;
+				sm->play("game_over_heart");
+				selectTimer = 0;
+			}
+		}
+		if (Event.key.keysym.sym == SDLK_RETURN && selectTimer > 15)
+		{
+			if (heartY == 272)
+			{
+				if (stage >= 1 && stage <= 3)
+				{
+					health = 16;
+					ammo = 5;
+					lives = 3;
+					whipLevel = 1;
+					totalScore = 0;
+					subWeaponType = SubWeaponType::EMPTY;
+					previousLevel = false;
+					previousLevel2 = false;
+					secondExit = false;
+					stage = 1;
+					levelN = 0;
+					fadeTimer = 60;
+					fadeDone = false;
+					gameState = GameState::Fade;
+				}
+			}
+			else if (heartY == 320)
+			{
+				running = false;
+			}
+		}
+	}
+}
+
 //Set the player stats for next level load
 void Game::SetPlayerStats()
-{
+{		
 	health = levels[levelN].player.Health();
 	lives = levels[levelN].player.Lives();
 	ammo = levels[levelN].player.Ammo();
