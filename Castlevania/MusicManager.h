@@ -3,9 +3,10 @@
 
 #include <stdio.h>
 #include <string>
+#include <map>
 #include <SDL.h>
 #include <SDL_mixer.h>
-#include <map>
+
 
 class MusicManager
 {

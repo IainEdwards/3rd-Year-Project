@@ -7,7 +7,11 @@
 enum ObjectType
 {
 	TORCH,
-	CANDLE
+	CANDLE,
+	TILE_1,
+	TILE_2,
+	TILE_3,
+	TILE_4
 };
 
 class DestroyableObject

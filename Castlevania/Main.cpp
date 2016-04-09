@@ -1,4 +1,3 @@
-#define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
 
@@ -8,8 +7,7 @@
 Game* game = 0;
 
 int main(int argc, char* args[])
-{
-	//_CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF);
+{	
 
 	game = new Game();	
 
@@ -19,7 +17,6 @@ int main(int argc, char* args[])
 		game->Render();		
 	}
 
-	//_CrtDumpMemoryLeaks();
 
 	delete game;
 	

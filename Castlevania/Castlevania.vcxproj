@@ -83,6 +83,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MusicManager.cpp" />
     <ClCompile Include="Pickup.cpp" />
+    <ClCompile Include="LevelObject.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="SoundManager.cpp" />
     <ClCompile Include="SpritePopup.cpp" />
@@ -98,6 +99,7 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="MusicManager.h" />
     <ClInclude Include="Pickup.h" />
+    <ClInclude Include="LevelObject.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="SoundManager.h" />
     <ClInclude Include="SpritePopup.h" />

@@ -1,14 +1,18 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <string>
+
 #include <SDL.h>
 #include <SDL_mixer.h>
-#include <string>
+
 #include "Tile.h"
 #include "SoundManager.h"
 #include "Enemy.h"
 #include "Boss.h"
 #include "SubWeapon.h"
+#include "LevelObject.h"
+#include "DestroyableObject.h"
 
 enum PlayerAnimation
 {
@@ -41,7 +45,7 @@ public:
 
 	void GetInput(SDL_Event& e);
 
-	void ApplyPhysics(Tile *tiles[]);
+	void ApplyPhysics(Tile *tiles[], std::list <LevelObject> levelObjects, std::list <DestroyableObject> objects);
 
 	void PlaySounds(SoundManager* sm);
 
@@ -56,6 +60,10 @@ public:
 	bool touchesExit(SDL_Rect box, Tile* tiles[], bool first);
 
 	bool touchesEntrance(SDL_Rect box, Tile* tiles[], bool first);
+
+	bool touchesLevelObject(SDL_Rect box, std::list <LevelObject> levelObjects);
+
+	bool touchesDestroyableObject(SDL_Rect box, std::list <DestroyableObject> objects);
 
 	void moveToStairs(SDL_Rect box, Tile* tiles[]);
 
@@ -89,6 +97,9 @@ public:
 	void ChangePosX(int value);
 
 	bool Flip();
+	void SetFlip(bool setFlip);
+	bool Crouching();
+	bool Jumping();
 
 	SDL_Rect AttackBox();
 	SDL_Rect PlayerBox();	
@@ -102,7 +113,7 @@ public:
 	bool ReachedEntrance();
 	bool ReachedEntrance2();	
 
-	void SetOnStairs(bool up);
+	void SetOnStairs(bool up, bool right);
 
 	//Health functions
 	int Health();
@@ -130,6 +141,7 @@ public:
 	void SetSpawnProjectile(bool value);
 	int CurrentProjectiles();
 	void SetCurrentProjectiles(int value);
+	int MaxProjectiles();
 	void SetMaxProjectiles(int value);	
 
 	//Whip functions
@@ -155,6 +167,8 @@ private:
 	int velX;
 	
 	bool flip;	
+
+	bool stopSound;
 
 	//Player movement constants
 	static const int MoveSpeed;	

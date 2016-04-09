@@ -9,6 +9,7 @@ enum EnemyType
 {
 	AXE_KNIGHT,
 	BAT,
+	BAT_BLUE,
 	BONE_DRAGON,
 	BONE_TOWER,
 	EAGLE,
@@ -21,7 +22,10 @@ enum EnemyType
 	RAVEN,
 	RED_SKELETON,
 	SKELETON,
-	SPEAR_KNIGHT
+	SPEAR_KNIGHT,
+	SNAKE,
+	PROJECTILE,
+	PROJECTILE_FAST
 };
 
 class Enemy
@@ -30,7 +34,7 @@ public:
 	Enemy();	
 	~Enemy();
 
-	void ApplyPhysics(Tile *tiles[], int totalTiles);
+	void ApplyPhysics(Tile *tiles[], int totalTiles, SDL_Rect playerBox);
 
 	void DrawEnemy(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 
@@ -41,23 +45,35 @@ public:
 
 	bool Flip();
 
-	void setEnemy(int x, int y, EnemyType type);
+	void setEnemy(int x, int y, EnemyType type, bool flip);
 
 	bool checkCollision(SDL_Rect a, SDL_Rect b);
 
-	bool touchesWall(SDL_Rect box, Tile* tiles[], int totalTiles);
+	bool touchesWall(Tile* tiles[], int totalTiles);
 
 	SDL_Rect EnemyBox();
 
-	int HitPoints();
+	float HitPoints();
 	void takeHit(int whipLevel);
 
 	int getCooldown();	
 
 	void SetIdle(bool idleTo);
+	bool Idle();
 
 	void GhoulPhysics(Tile *tiles[], int totalTiles);
-	void PantherPhysics(Tile *tiles[], int totalTiles);
+	void PantherPhysics(Tile *tiles[], int totalTiles, SDL_Rect playerBox);
+	void BatPhysics(SDL_Rect playerBox);
+	void FishmanPhysics(Tile *tiles[], int totalTiles);
+	void SpearKnightPhysics(Tile *tiles[], int totalTiles, SDL_Rect playerBox);
+	void MedusaHeadPhysics();
+	void BoneTowerPhysics(SDL_Rect playerBox);
+	bool Splash();
+	bool DoShot();
+	void ProjectilePhysics(Tile *tiles[], int totalTiles, float speed);
+
+	bool DeleteEnemy();
+
 
 private:
 
@@ -72,15 +88,26 @@ private:
 	bool jumping;
 	int jumpTimer;
 
+	bool splash;
+
+	bool doShot;
+	bool shooting;
+	int shootTimer;
+	int shootCooldown;
+
 	float velX, velY;
 	float posX, posY;
-	int hitPoints;
+	int startY, startX;
+	float hitPoints;
 
 	int cooldown;
+	int enemyTimer;
 
 	//for framecounting in 3s
 	int frameTimer;
 	int frameCounter;
+
+	bool deleteEnemy;
 
 };
 

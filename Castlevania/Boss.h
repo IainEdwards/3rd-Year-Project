@@ -39,9 +39,16 @@ public:
 
 	int getCooldown();
 
-	void setAwake();
+	void setAwake();	
 
 	bool Awake();
+
+	bool AwakeStart();
+
+	bool SpawnMob();
+
+	void VampireBatPhysics(int playerPosX, int playerPosY, Tile* tiles[]);
+	void MedusaPhysics(int playerPosX, int playerPosY, Tile* tiles[]);
 
 private:
 
@@ -65,6 +72,12 @@ private:
 	int flip;
 
 	bool awake;
+	bool awakeStart;
+
+	//Variables for medusa
+	int medusaTimer, medusaTimer2;
+	float startY;
+	bool spawnMob;
 
 	
 

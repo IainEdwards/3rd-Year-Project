@@ -1,11 +1,13 @@
 #ifndef LEVEL_H
 #define LEVEL_H
 
+#include <list>
+#include <vector>
+
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
-#include <list>
-#include <vector>
+
 #include "Tile.h"
 #include "Player.h"
 #include "Enemy.h"
@@ -15,6 +17,7 @@
 #include "SpritePopup.h"
 #include "SubWeapon.h"
 #include "SoundManager.h"
+#include "LevelObject.h"
 
 class Level
 {
@@ -53,6 +56,8 @@ public:
 
 	void SpawnProjectile(int x, int y, int directionValue, SubWeaponType type);
 
+	std::list <LevelObject> levelObjects;
+
 	Boss levelBoss;
 
 	//Tile constants
@@ -69,13 +74,17 @@ public:
 
 	void SetScore(int value);
 
-	void SpawnEnemies(SDL_Rect& camera);	
+	void SpawnEnemies(SDL_Rect& camera, SoundManager* sm);
 
 	void SetPreviousLevelSpawn(bool spawnOne, bool spawnTwo);
 
 	void SetNextLevelSpawn(bool spawnTwo);
 
 	bool LevelComplete();
+
+	bool Stopwatch();
+	bool Pause();
+
 
 
 private:
@@ -97,12 +106,18 @@ private:
 	bool pause;
 	int pauseTimer;
 
+	bool stopwatch;
+	int stopwatchTimer;
+
 	bool previousLevel, previousLevel2;
 	bool secondExit;
 
 	bool levelComplete;
 
 	bool playerSplash;
+
+	bool rosaryFlash;
+	int rosaryTimer;
 };
 
 #endif

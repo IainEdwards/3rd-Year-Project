@@ -26,6 +26,22 @@ void DestroyableObject::setObject(int x, int y, ObjectType type)
 		objectBox.w = 16;
 		objectBox.h = 32;
 		break;
+	case TILE_1:
+		objectBox.w = 32;
+		objectBox.h = 32;
+		break;
+	case TILE_2:
+		objectBox.w = 32;
+		objectBox.h = 32;
+		break;
+	case TILE_3:
+		objectBox.w = 32;
+		objectBox.h = 32;
+		break;
+	case TILE_4:
+		objectBox.w = 32;
+		objectBox.h = 32;
+		break;
 
 	default:
 		break;
@@ -37,10 +53,22 @@ void DestroyableObject::DrawObject(TextureManager* tm, SDL_Renderer* renderer, S
 	switch (objectType)
 	{
 	case TORCH:
-		tm->drawFrame("torch", objectBox.x - camera.x, objectBox.y - camera.y + 2, 32, 64, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+		tm->drawFrame("torch", objectBox.x - camera.x, objectBox.y - camera.y + 2, objectBox.w, objectBox.h, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
 		break;
 	case CANDLE:
-		tm->drawFrame("candle", objectBox.x - camera.x - 2, objectBox.y - camera.y + 2, 16, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+		tm->drawFrame("candle", objectBox.x - camera.x - 2, objectBox.y - camera.y + 2, objectBox.w, objectBox.h, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+		break;
+	case TILE_1:
+		tm->draw("tile1", objectBox.x - camera.x, objectBox.y - camera.y, objectBox.w, objectBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case TILE_2:
+		tm->draw("tile2", objectBox.x - camera.x, objectBox.y - camera.y, objectBox.w, objectBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case TILE_3:
+		tm->draw("tile3", objectBox.x - camera.x, objectBox.y - camera.y, objectBox.w, objectBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case TILE_4:
+		tm->draw("tile4", objectBox.x - camera.x, objectBox.y - camera.y, objectBox.w, objectBox.h, renderer, SDL_FLIP_NONE);
 		break;
 	default:
 		break;

@@ -37,12 +37,13 @@ void Pickup::setPickup(int x, int y, PickupType type)
 	stop = false;
 
 	pickupTimer = 0;
-
-	
 }
 
 void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 {	
+	if (pickupType != SPIRIT_BALL)
+		pickupTimer++;
+
 	if (!stop)
 	{
 		velY += 0.5f;
@@ -84,8 +85,31 @@ void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 			break;
 		case DAGGER_DROP:
 			pickupBox.y += (int)round(velY);
+			break;		
+		case STOPWATCH_DROP:
+			pickupBox.y += (int)round(velY);
 			break;
-
+		case HOLY_WATER_DROP:
+			pickupBox.y += (int)round(velY);
+			break;
+		case AXE_DROP:
+			pickupBox.y += (int)round(velY);
+			break;
+		case CROSS_DROP:
+			pickupBox.y += (int)round(velY);
+			break;
+		case ROSARY:
+			pickupBox.y += (int)round(velY);
+			break;
+		case ROAST:
+			pickupBox.y += (int)round(velY);
+			break;
+		case DOUBLE_SHOT:
+			pickupBox.y += (int)round(velY);
+			break;
+		case TRIPLE_SHOT:
+			pickupBox.y += (int)round(velY);
+			break;
 		case SPIRIT_BALL:
 			pickupTimer++;
 
@@ -99,7 +123,7 @@ void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 
 	for (int i = 0; i < totalTiles; ++i)
 	{
-		if (tiles[i]->Type() != '0')
+		if (tiles[i]->Type() == '1' || tiles[i]->Type() == '2')
 		{
 			if (checkCollision(pickupBox, tiles[i]->Box()) && !stop)
 			{
@@ -114,9 +138,6 @@ void Pickup::ApplyPhysics(Tile *tiles[], int totalTiles)
 			}
 		}
 	}
-
-
-
 }
 
 void Pickup::DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount)
@@ -143,6 +164,30 @@ void Pickup::DrawPickup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& ca
 		break;
 	case DAGGER_DROP:
 		tm->draw("dagger", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case STOPWATCH_DROP:
+		tm->draw("stopwatch", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case HOLY_WATER_DROP:
+		tm->draw("holy_water", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case AXE_DROP:
+		tm->draw("axe", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case CROSS_DROP:
+		tm->draw("cross", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case ROSARY:
+		tm->draw("rosary", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case ROAST:
+		tm->draw("roast", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case DOUBLE_SHOT:
+		tm->draw("double_shot_drop", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+	case TRIPLE_SHOT:
+		tm->draw("triple_shot_drop", pickupBox.x - camera.x, pickupBox.y - camera.y, pickupBox.w, pickupBox.h, renderer, SDL_FLIP_NONE);
 		break;
 
 	case SPIRIT_BALL:

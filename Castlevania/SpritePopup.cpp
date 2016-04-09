@@ -60,6 +60,31 @@ void SpritePopup::setPopup(int x, int y, PopupType type)
 		velY = -4.0f;
 		velX = 0.2f;
 		break;
+
+	case DEBRIS_LEFT:
+		popupBox.w = 16;
+		popupBox.h = 16;
+		velY = -3.0f;
+		velX = -1.0f;
+		timer = -10;
+		break;
+
+	case DEBRIS_RIGHT:
+		popupBox.w = 16;
+		popupBox.h = 16;
+		velY = -3.0f;
+		velX = 1.0f;
+		timer = -10;
+		break;
+
+	case DEBRIS_UP:
+		popupBox.w = 16;
+		popupBox.h = 16;
+		velY = -6.0f;
+		velX = 0.2f;
+		timer = -10;
+		break;
+
 	default:
 		break;
 	}
@@ -80,6 +105,18 @@ void SpritePopup::ApplyPhysics()
 
 	case SPLASH_RIGHT:
 		velY += 0.3f;
+		break;
+
+	case DEBRIS_LEFT:
+		velY += 0.4f;
+		break;
+
+	case DEBRIS_RIGHT:
+		velY += 0.3f;
+		break;
+
+	case DEBRIS_UP:
+		velY += 0.5f;
 		break;
 
 	default:
@@ -122,6 +159,18 @@ void SpritePopup::DrawPopup(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect
 
 	case WHITE_POINTS:
 		tm->draw("700", popupBox.x - camera.x, popupBox.y - camera.y, popupBox.w, popupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+
+	case DEBRIS_LEFT:
+		tm->draw("debris", popupBox.x - camera.x, popupBox.y - camera.y, popupBox.w, popupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+
+	case DEBRIS_RIGHT:
+		tm->draw("debris", popupBox.x - camera.x, popupBox.y - camera.y, popupBox.w, popupBox.h, renderer, SDL_FLIP_NONE);
+		break;
+
+	case DEBRIS_UP:
+		tm->draw("debris", popupBox.x - camera.x, popupBox.y - camera.y, popupBox.w, popupBox.h, renderer, SDL_FLIP_NONE);
 		break;
 
 	default:

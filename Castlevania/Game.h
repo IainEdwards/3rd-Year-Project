@@ -1,12 +1,14 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include <SDL.h>
-#include <SDL_image.h>
-#include "Player.h"
 #include <stdio.h>
 #include <string>
 #include <vector>
+
+#include <SDL.h>
+#include <SDL_image.h>
+#include "Player.h"
+
 
 enum GameState
 {

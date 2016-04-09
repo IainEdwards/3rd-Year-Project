@@ -17,9 +17,9 @@ SoundManager *sm = new SoundManager();
 MusicManager *mm = new MusicManager();
 
 Level levels[20];
-int levelN = 0;
+int levelN = 5;
 
-int health, lives, ammo, stage, whipLevel;
+int health, lives, ammo, stage, whipLevel, maxProjectiles;
 SubWeaponType subWeaponType;
 int totalScore, prevScore;
 int deathTimer;
@@ -109,6 +109,7 @@ Game::Game()
 	previousLevel2 = false;
 	secondExit = false;
 	stage = 1;
+	maxProjectiles = 1;
 
 }
 
@@ -141,14 +142,66 @@ void Game::HandleGameState()
 			levels[10];
 			levelN++;	
 
-			if (levelN != 0 && levelN != 1 && levelN != 3 && !previousLevel && !previousLevel2 && !secondExit)
-				stage++;
+			switch (levelN)
+			{
+			//First main level
+			case 0:
+				stage = 1;
+				gameTime = 300;
+				break;
+			case 1:
+				stage = 1;
+				break;
+			case 2:
+				stage = 2;
+				break;
+			case 3:
+				stage = 2;
+				break;
+			case 4:
+				stage = 3;
+				break;
+
+			//Second main level
+			case 5:
+				stage = 4;
+				gameTime = 400;
+				break;
+			case 6:
+				stage = 4;
+				break;
+			case 7:
+				stage = 5;				
+				break;
+			case 8:
+				stage = 5;
+				break;
+			case 9:
+				stage = 6;
+				break;
+			case 10:
+				stage = 6;
+				break;
+			case 11:
+				stage = 7;
+				break;
+			default:
+				break;
+			}
+
+			if (levelN == 0 || levelN == 1)
+			{
+				stage = 1;
+			}
 
 			if (levelN == 0 || levelN == 1)
 				gameTime = 300;
 
 			if (levelN == 5)
 				gameTime = 400;
+
+			if (levelN == 11)
+				gameTime = 500;
 
 			std::string levelID = "level";
 			levelID.append(std::to_string(levelN));
@@ -178,10 +231,22 @@ void Game::HandleGameState()
 			levels[levelN].player.SetHealth(health);
 			levels[levelN].player.SetLives(lives);
 			levels[levelN].player.SetAmmo(ammo);
+			levels[levelN].player.SetMaxProjectiles(maxProjectiles);
 			levels[levelN].player.SetSubWeapon(subWeaponType);
 			levels[levelN].player.SetAlive();				
 			deathTimer = 180;		
 			changeMusic = true;
+
+			if (levelN == 1 || levelN == 2 || levelN == 4 || levelN == 5 || levelN == 8)
+				camera.x = 0;
+
+			if (levelN == 6 || levelN == 9)
+				camera.x = 512;
+
+			if (levelN == 7)
+				camera.x = 1024;
+
+			
 
 			gameState = GameState::Running;
 		}
@@ -233,7 +298,8 @@ void Game::Update()
 			}			
 
 			//Handle input for the player
-			levels[levelN].player.GetInput(Event);			
+			if (!levels[levelN].player.PlayerDead() && !levels[levelN].Pause())
+				levels[levelN].player.GetInput(Event);			
 		}
 
 		//Calculate the frame count for animations
@@ -261,8 +327,10 @@ void Game::Update()
 		{			
 			if (levelN >= 0 && levelN <= 4)
 				mm->play("vampire_killer", 0);
-			else if (levelN >= 5 && levelN <= 9)
+			else if (levelN >= 5 && levelN <= 10)
 				mm->play("stalker", 0);
+			else if (levelN >= 11 && levelN <= 16)
+				mm->play("wicked_child", 0);
 		}
 		else if (Mix_PlayingMusic() == 0 && levels[levelN].player.BossFight())
 		{
@@ -273,10 +341,21 @@ void Game::Update()
 		currentTime = SDL_GetTicks();
 		deltaTime = currentTime - lastUpdate;
 
-		if (deltaTime >= 1000)
+		if (deltaTime >= 1000 && !levels[levelN].player.PlayerDead() )
 		{
 			lastUpdate = currentTime;
-			gameTime--;
+
+			if (!levels[levelN].Stopwatch())
+				gameTime--;
+
+			if (gameTime <= 30 && gameTime > 0)
+			{
+				sm->play("alarm");
+			}
+			if (gameTime <= 0)
+			{
+				levels[levelN].player.playerDeath();
+			}
 		}
 
 		//Check if the player has reached an exit
@@ -384,8 +463,19 @@ void Game::Update()
 						gameTime = 400;
 						levelN = 4;
 					}
+					else if (stage == 5)
+					{
+						gameTime = 300;
+						levelN = 6;
+					}
+					else if (stage == 6)
+					{
+						gameTime = 200;
+						levelN = 8;
+					}
 					health = 16;
 					lives--;
+					maxProjectiles = 1;
 					gameState = GameState::Fade;
 				}
 			}
@@ -396,9 +486,12 @@ void Game::Update()
 			Mix_HaltMusic();
 			mm->play("stage_clear", 0);
 			levelCompleteTimer = 0;
-			gameTime = 60;
 			heartScore = false;
 			goToMap = false;
+			ammo = 5;
+			subWeaponType = levels[levelN].player.SubWeapon();			
+			whipLevel = levels[levelN].player.WhipLevel();
+			maxProjectiles = levels[levelN].player.MaxProjectiles();
 			gameState = GameState::LevelComplete;
 		}
 		break;		
@@ -477,9 +570,18 @@ void Game::Render()
 
 		if (mapX == 0)
 		{
-			tm->drawFrame("map_bat", 182, 214, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
-			tm->drawFrame("map_mark", 302, 274, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
-			tm->drawFrame("player_introwalk", playerX, 306, 32, 64, 1, frameCount, renderer, SDL_FLIP_NONE);
+			if (levelN == 4)
+			{
+				tm->drawFrame("map_bat", 182, 214, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+				tm->drawFrame("map_mark", 302, 274, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+				tm->drawFrame("player_introwalk", playerX, 306, 32, 64, 1, frameCount, renderer, SDL_FLIP_NONE);
+			}
+			if (levelN == 10)
+			{
+				tm->drawFrame("map_bat", 342, 183, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+				tm->drawFrame("map_mark", 158, 216, 32, 32, 1, frameCount % 2, renderer, SDL_FLIP_NONE);
+				tm->drawFrame("player_introwalk", playerX, 306, 32, 64, 1, frameCount, renderer, SDL_FLIP_NONE);
+			}
 		}
 
 		DrawHUD();
@@ -523,8 +625,17 @@ void Game::DrawHUD()
 	tm->drawFrame("numbers", 177, 15, 16, 16, 1, totalScore % 10, renderer, SDL_FLIP_NONE);
 
 	//Draw ammo
-	tm->drawFrame("numbers", 369, 31, 16, 16, 1, levels[levelN].player.Ammo() / 10 % 10, renderer, SDL_FLIP_NONE);
-	tm->drawFrame("numbers", 385, 31, 16, 16, 1, levels[levelN].player.Ammo() % 10, renderer, SDL_FLIP_NONE);
+	if (gameState != GameState::Map)
+	{
+		tm->drawFrame("numbers", 369, 31, 16, 16, 1, levels[levelN].player.Ammo() / 10 % 10, renderer, SDL_FLIP_NONE);
+		tm->drawFrame("numbers", 385, 31, 16, 16, 1, levels[levelN].player.Ammo() % 10, renderer, SDL_FLIP_NONE);
+	}
+	else if (gameState = GameState::Map)
+	{
+		tm->drawFrame("numbers", 369, 31, 16, 16, 1, 0, renderer, SDL_FLIP_NONE);
+		tm->drawFrame("numbers", 385, 31, 16, 16, 1, 5, renderer, SDL_FLIP_NONE);
+	}
+	
 
 	//Draw lives
 	tm->drawFrame("numbers", 369, 47, 16, 16, 1, lives / 10 % 10, renderer, SDL_FLIP_NONE);
@@ -542,7 +653,18 @@ void Game::DrawHUD()
 	case DAGGER:
 		tm->draw("dagger", 272, 38, 32, 32, renderer, SDL_FLIP_NONE);
 		break;
-
+	case STOPWATCH:
+		tm->draw("stopwatch", 272, 38, 32, 32, renderer, SDL_FLIP_NONE);
+		break;
+	case HOLY_WATER:
+		tm->draw("holy_water", 272, 38, 32, 32, renderer, SDL_FLIP_NONE);
+		break;
+	case AXE:
+		tm->draw("axe", 272, 38, 32, 32, renderer, SDL_FLIP_NONE);
+		break;
+	case CROSS:
+		tm->draw("cross", 272, 38, 32, 32, renderer, SDL_FLIP_NONE);
+		break;
 	default:
 		break;
 	}
@@ -552,12 +674,19 @@ void Game::DrawHUD()
 		tm->draw("health", 112 + i * 8, 34, 8, 12, renderer, SDL_FLIP_NONE);
 
 	//Draw bosshealth
-	if (stage == 3)
+	if (stage == 3 || levelN == 10)
 		for (int i = 0; i < levels[levelN].levelBoss.Health(); i++)
 			tm->draw("bosshealth", 112 + i * 8, 50, 8, 12, renderer, SDL_FLIP_NONE);
-	else
+	else if (gameState != GameState::Map)
 		for (int i = 0; i < 16; i++)
 			tm->draw("bosshealth", 112 + i * 8, 50, 8, 12, renderer, SDL_FLIP_NONE);
+
+	//Draw double/triple shot
+	if (levels[levelN].player.MaxProjectiles() == 2)
+		tm->draw("double_shot", 418, 34, 32, 32, renderer, SDL_FLIP_NONE);
+
+	if (levels[levelN].player.MaxProjectiles() == 3)
+		tm->draw("triple_shot", 418, 34, 32, 32, renderer, SDL_FLIP_NONE);
 }
 
 void Game::LoadAssets()
@@ -615,6 +744,7 @@ void Game::LoadAssets()
 	mm->load("Assets/Music/poison_mind.ogg", "poison_mind");
 	mm->load("Assets/Music/stage_clear.ogg", "stage_clear");
 	mm->load("Assets/Music/game_over.ogg", "game_over");
+	mm->load("Assets/Music/wicked_child.ogg", "wicked_child");
 
 	//Player assets
 	tm->load("Assets/Sprites/Player/player_idle.png", "player_idle", renderer);
@@ -658,20 +788,43 @@ void Game::LoadAssets()
 	tm->load("Assets/Sprites/Misc/100.png", "100", renderer);
 	tm->load("Assets/Sprites/Misc/400.png", "400", renderer);
 	tm->load("Assets/Sprites/Misc/700.png", "700", renderer);
+	tm->load("Assets/Sprites/Misc/debris.png", "debris", renderer);
 
 	//Enemy assets
 	tm->load("Assets/Sprites/Enemies/ghoul.png", "ghoul", renderer);
 	tm->load("Assets/Sprites/Enemies/panther_idle.png", "panther_idle", renderer);
 	tm->load("Assets/Sprites/Enemies/panther_running.png", "panther_running", renderer);
 	tm->load("Assets/Sprites/Enemies/panther_jumping.png", "panther_jumping", renderer);
+	tm->load("Assets/Sprites/Enemies/bat_idle.png", "bat_idle", renderer);
+	tm->load("Assets/Sprites/Enemies/bat_flying.png", "bat_flying", renderer);
+	tm->load("Assets/Sprites/Enemies/bat_idle_blue.png", "bat_idle_blue", renderer);
+	tm->load("Assets/Sprites/Enemies/bat_flying_blue.png", "bat_flying_blue", renderer);
+	tm->load("Assets/Sprites/Enemies/fishman_idle.png", "fishman_idle", renderer);
+	tm->load("Assets/Sprites/Enemies/fishman_moving.png", "fishman_moving", renderer);
+	tm->load("Assets/Sprites/Enemies/fishman_shooting.png", "fishman_shooting", renderer);
+	tm->load("Assets/Sprites/Enemies/spear_knight.png", "spear_knight", renderer);
+	tm->load("Assets/Sprites/Enemies/medusa_head.png", "medusa_head", renderer);
+	tm->load("Assets/Sprites/Enemies/bone_tower.png", "bone_tower", renderer);
+	tm->load("Assets/Sprites/Enemies/snake.png", "snake", renderer);
+	tm->load("Assets/Sprites/Misc/projectile.png", "projectile", renderer);
 
 	//Object assets
 	tm->load("Assets/Sprites/Misc/torch.png", "torch", renderer);
 	tm->load("Assets/Sprites/Misc/candle.png", "candle", renderer);
+	tm->load("Assets/Sprites/Misc/tile1.png", "tile1", renderer);
+	tm->load("Assets/Sprites/Misc/tile2.png", "tile2", renderer);
+	tm->load("Assets/Sprites/Misc/tile3.png", "tile3", renderer);
+	tm->load("Assets/Sprites/Misc/tile4.png", "tile4", renderer);
+	tm->load("Assets/Sprites/Misc/platform.png", "platform", renderer);
+	tm->load("Assets/Sprites/Misc/crusher.png", "crusher", renderer);
+	tm->load("Assets/Sprites/Misc/crusher2.png", "crusher2", renderer);
+	tm->load("Assets/Sprites/Misc/crushercover.png", "crushercover", renderer);
 
 	//Boss assets
 	tm->load("Assets/Sprites/Bosses/vampire_bat.png", "vampire_bat", renderer);
 	tm->load("Assets/Sprites/Bosses/vampire_bat_idle.png", "vampire_bat_idle", renderer);
+	tm->load("Assets/Sprites/Bosses/medusa.png", "medusa", renderer);
+	tm->load("Assets/Sprites/Bosses/medusa_idle.png", "medusa_idle", renderer);
 
 	//Item assets
 	tm->load("Assets/Sprites/Items/whip.png", "whip", renderer);
@@ -681,12 +834,25 @@ void Game::LoadAssets()
 	tm->load("Assets/Sprites/Items/purple_moneybag.png", "purple_moneybag", renderer);
 	tm->load("Assets/Sprites/Items/white_moneybag.png", "white_moneybag", renderer);
 	tm->load("Assets/Sprites/Items/dagger.png", "dagger", renderer);
-
+	tm->load("Assets/Sprites/Items/stopwatch.png", "stopwatch", renderer);
+	tm->load("Assets/Sprites/Items/holy_water.png", "holy_water", renderer);
+	tm->load("Assets/Sprites/Misc/holy_water_flame.png", "holy_water_flame", renderer);
+	tm->load("Assets/Sprites/Items/axe.png", "axe", renderer);
+	tm->load("Assets/Sprites/Items/cross.png", "cross", renderer);
+	tm->load("Assets/Sprites/Items/rosary.png", "rosary", renderer);
+	tm->load("Assets/Sprites/Misc/flash.png", "flash", renderer);
+	tm->load("Assets/Sprites/Items/roast.png", "roast", renderer);
+	tm->load("Assets/Sprites/Items/double_shot.png", "double_shot", renderer);
+	tm->load("Assets/Sprites/Items/double_shot_drop.png", "double_shot_drop", renderer);
+	tm->load("Assets/Sprites/Items/triple_shot.png", "triple_shot", renderer);
+	tm->load("Assets/Sprites/Items/triple_shot_drop.png", "triple_shot_drop", renderer);
 	tm->load("Assets/Sprites/Items/spirit_ball.png", "spirit_ball", renderer);
 
 	//SFX
 	sm->load("Assets/Sounds/break.wav", "break");
 	sm->setVolume("break", 32);
+	sm->load("Assets/Sounds/break_tile.wav", "break_tile");
+	sm->setVolume("break_tile", 32);
 	sm->load("Assets/Sounds/weapon.wav", "weapon");
 	sm->setVolume("weapon", 32);
 	sm->load("Assets/Sounds/heart.wav", "heart");
@@ -707,8 +873,20 @@ void Game::LoadAssets()
 	sm->setVolume("splash_up", 32);
 	sm->load("Assets/Sounds/splash_down.wav", "splash_down");
 	sm->setVolume("splash_down", 32);
-	
-
+	sm->load("Assets/Sounds/alarm.wav", "alarm");
+	sm->setVolume("alarm", 32);
+	sm->load("Assets/Sounds/stopwatch.wav", "stopwatch");
+	sm->setVolume("stopwatch", 32);
+	sm->load("Assets/Sounds/holy_water.wav", "holy_water");
+	sm->setVolume("holy_water", 32);
+	sm->load("Assets/Sounds/rosary.wav", "rosary");
+	sm->setVolume("rosary", 32);
+	sm->load("Assets/Sounds/cross.wav", "cross");
+	sm->setVolume("cross", 32);
+	sm->load("Assets/Sounds/enemy_hit.wav", "enemy_hit");
+	sm->setVolume("enemy_hit", 32);
+	sm->load("Assets/Sounds/extra_life.wav", "extra_life");
+	sm->setVolume("extra_life", 32);
 	
 }
 
@@ -823,13 +1001,20 @@ void Game::RunIntro()
 //Run the door animations and change to next level
 void Game::RunDoor()
 {
+	int doorMove = 1;
+
+	if (levelN == 1 || levelN == 2)	
+		doorMove = 1;	
+	else
+		doorMove = -1;
+
 	doorTimer--;
 	if (doorTimer <= 0)
 		doorDone = true;
 
 	if (doorTimer >= 384)
 	{
-		camera.x += 2;
+		camera.x += 2 * doorMove;
 		frameCount = 0;
 	}
 
@@ -848,20 +1033,20 @@ void Game::RunDoor()
 			if (frameCount >= 4)
 				frameCount = 0;
 		}
-		levels[levelN].player.ChangePosX(2);
+		levels[levelN].player.ChangePosX(2 * doorMove);
 	}
 	if (doorTimer < 296)
 		frameCount = 0;
 
 	if (doorTimer < 288 && doorTimer >= 160)
 	{
-		camera.x += 2;
+		camera.x += 2 * doorMove;
 
 	}
 
 	if (doorTimer < 160)
 		doorDone = true;
-
+	
 	if (doorDone)
 	{
 		levels[levelN];
@@ -875,17 +1060,25 @@ void Game::RunDoor()
 		levelID.append(std::to_string(levelN));
 
 		levels[levelN].LoadLevel(levelID, levelN, tm, renderer, sm);
-		stage++;		
-		prevScore = totalScore;		
+		stage++;			
+		levels[levelN].SetScore(0);
+		prevScore = totalScore;
 		levels[levelN].player.SetWhipLevel(whipLevel);
 		levels[levelN].player.SetHealth(health);
 		levels[levelN].player.SetLives(lives);
 		levels[levelN].player.SetAmmo(ammo);
+		levels[levelN].player.SetMaxProjectiles(maxProjectiles);
 		levels[levelN].player.SetSubWeapon(subWeaponType);
 		levels[levelN].player.SetAlive();
 		deathTimer = 180;
-		camera.x = 0;
-		camera.y = 0;
+		changeMusic = true;
+
+		if (levelN == 1 || levelN == 2 || levelN == 4)
+			camera.x = 0;			
+		
+		if (levelN == 7 || levelN == 9)		
+			camera.x = 1024;		
+		
 		gameState = GameState::Running;
 	}
 }
@@ -1071,7 +1264,9 @@ void Game::SetPlayerStats()
 	lives = levels[levelN].player.Lives();
 	ammo = levels[levelN].player.Ammo();
 	subWeaponType = levels[levelN].player.SubWeapon();
+	maxProjectiles = levels[levelN].player.MaxProjectiles();
 	whipLevel = levels[levelN].player.WhipLevel();
+	
 }
 
 
