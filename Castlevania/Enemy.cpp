@@ -145,70 +145,73 @@ void Enemy::setEnemy(int x, int y, EnemyType type, bool setFlip)
 	}	
 }
 
-void Enemy::ApplyPhysics(Tile *tiles[], int totalTiles, SDL_Rect playerBox)
+void Enemy::ApplyPhysics(Tile *tiles[], int totalTiles, SDL_Rect playerBox, bool stopwatch)
 {
 	if (cooldown > 0)
 		cooldown--;
 
-	switch (enemyType)
+	if (!stopwatch)
 	{
-	case GHOUL:
-		GhoulPhysics(tiles, totalTiles);
-		break;
-
-	case PANTHER:
-		PantherPhysics(tiles, totalTiles, playerBox);
-		break;
-
-	case BAT:
-		BatPhysics(playerBox);
-		break;
-
-	case BAT_BLUE:		
-		BatPhysics(playerBox);
-		break;
-
-	case FISHMAN:
-		FishmanPhysics(tiles, totalTiles);
-		break;
-
-	case SPEAR_KNIGHT:
-		if (cooldown < 12)		
-			SpearKnightPhysics(tiles, totalTiles, playerBox);
-		break;
-
-	case MEDUSA_HEAD:
-		MedusaHeadPhysics();
-		break;
-
-	case BONE_TOWER:
-		BoneTowerPhysics(playerBox);
-		break;
-
-	case SNAKE:
-		if (!flip)
-			enemyBox.x += 2;
-		else
-			enemyBox.x -= 2;
-
-		if (touchesWall(tiles, totalTiles))
+		switch (enemyType)
 		{
-			deleteEnemy = true;
+		case GHOUL:
+			GhoulPhysics(tiles, totalTiles);
+			break;
+
+		case PANTHER:
+			PantherPhysics(tiles, totalTiles, playerBox);
+			break;
+
+		case BAT:
+			BatPhysics(playerBox);
+			break;
+
+		case BAT_BLUE:
+			BatPhysics(playerBox);
+			break;
+
+		case FISHMAN:
+			FishmanPhysics(tiles, totalTiles);
+			break;
+
+		case SPEAR_KNIGHT:
+			if (cooldown < 12)
+				SpearKnightPhysics(tiles, totalTiles, playerBox);
+			break;
+
+		case MEDUSA_HEAD:
+			MedusaHeadPhysics();
+			break;
+
+		case BONE_TOWER:
+			BoneTowerPhysics(playerBox);
+			break;
+
+		case SNAKE:
+			if (!flip)
+				enemyBox.x += 3;
+			else
+				enemyBox.x -= 3;
+
+			if (touchesWall(tiles, totalTiles))
+			{
+				deleteEnemy = true;
+			}
+
+			break;
+
+		case PROJECTILE:
+			ProjectilePhysics(tiles, totalTiles, 1.0f);
+			break;
+
+		case PROJECTILE_FAST:
+			ProjectilePhysics(tiles, totalTiles, 2.0f);
+			break;
+
+		default:
+			break;
 		}
-
-		break;
-
-	case PROJECTILE:
-		ProjectilePhysics(tiles, totalTiles, 1.0f);
-		break;
-
-	case PROJECTILE_FAST:
-		ProjectilePhysics(tiles, totalTiles, 2.0f);
-		break;
-
-	default:
-		break;
-	}	
+	}
 
 	
 }
@@ -711,10 +714,7 @@ void Enemy::FishmanPhysics(Tile *tiles[], int totalTiles)
 	{
 		posX -= velX;
 
-		if (flip)
-			flip = false;
-		if (!flip)
-			flip = true;
+		flip = !flip;
 	}
 	enemyBox.x = (int)round(posX);
 		

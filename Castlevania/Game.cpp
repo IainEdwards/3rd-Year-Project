@@ -10,14 +10,14 @@
 #include "SoundManager.h"
 #include "MusicManager.h"
 
-GameState gameState = GameState::Fade;
+GameState gameState = GameState::Title;
 
 TextureManager *tm = new TextureManager();
 SoundManager *sm = new SoundManager();
 MusicManager *mm = new MusicManager();
 
 Level levels[20];
-int levelN = 5;
+int levelN = -1;
 
 int health, lives, ammo, stage, whipLevel, maxProjectiles;
 SubWeaponType subWeaponType;
@@ -182,6 +182,8 @@ void Game::HandleGameState()
 			case 10:
 				stage = 6;
 				break;
+
+			//Third main level
 			case 11:
 				stage = 7;
 				break;
@@ -240,10 +242,10 @@ void Game::HandleGameState()
 			if (levelN == 1 || levelN == 2 || levelN == 4 || levelN == 5 || levelN == 8)
 				camera.x = 0;
 
-			if (levelN == 6 || levelN == 9)
+			if (levelN == 6)
 				camera.x = 512;
 
-			if (levelN == 7)
+			if (levelN == 7 || levelN == 9 || levelN == 10 || levelN == 11)
 				camera.x = 1024;
 
 			
@@ -674,9 +676,12 @@ void Game::DrawHUD()
 		tm->draw("health", 112 + i * 8, 34, 8, 12, renderer, SDL_FLIP_NONE);
 
 	//Draw bosshealth
-	if (stage == 3 || levelN == 10)
+	if (stage == 3)
 		for (int i = 0; i < levels[levelN].levelBoss.Health(); i++)
 			tm->draw("bosshealth", 112 + i * 8, 50, 8, 12, renderer, SDL_FLIP_NONE);
+	else if (levelN == 10)
+		for (int i = 0; i < levels[levelN].levelBoss.Health(); i+=2)
+			tm->draw("bosshealth", 112 + i * 4, 50, 8, 12, renderer, SDL_FLIP_NONE);
 	else if (gameState != GameState::Map)
 		for (int i = 0; i < 16; i++)
 			tm->draw("bosshealth", 112 + i * 8, 50, 8, 12, renderer, SDL_FLIP_NONE);
@@ -1118,7 +1123,7 @@ void Game::RunLevelComplete()
 
 	if (levelCompleteTimer > 60 && heartScore && !goToMap)
 	{
-		if (levels[levelN].player.Ammo() > 1 && addScoreTimer > 8)
+		if (levels[levelN].player.Ammo() >= 1 && addScoreTimer > 8)
 		{
 			Mix_HaltChannel(-1);
 			sm->play("heart_score");
@@ -1126,13 +1131,10 @@ void Game::RunLevelComplete()
 			totalScore += 100;
 			addScoreTimer = 0;
 		}
-		if (levels[levelN].player.Ammo() > 0 && addScoreTimer > 8)
-		{
-			Mix_HaltChannel(-1);
-			sm->play("heart_score");
+		if (levels[levelN].player.Ammo() >= 0 && addScoreTimer > 8)
+		{						
 			levels[levelN].player.SetAmmo(0);
-			addScoreTimer = 0;	
-			totalScore += 100;
+			addScoreTimer = 0;				
 			goToMap = true;
 			levelCompleteTimer = 0;
 		}
@@ -1244,6 +1246,23 @@ void Game::RunGameOver()
 					secondExit = false;
 					stage = 1;
 					levelN = 0;
+					fadeTimer = 60;
+					fadeDone = false;
+					gameState = GameState::Fade;
+				}
+				else if (stage >= 4 && stage <= 6)
+				{
+					health = 16;
+					ammo = 5;
+					lives = 3;
+					whipLevel = 1;
+					totalScore = 0;
+					subWeaponType = SubWeaponType::EMPTY;
+					previousLevel = false;
+					previousLevel2 = false;
+					secondExit = false;
+					stage = 1;
+					levelN = 4;
 					fadeTimer = 60;
 					fadeDone = false;
 					gameState = GameState::Fade;

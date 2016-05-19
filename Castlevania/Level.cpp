@@ -178,9 +178,8 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 		//Iterate through enemies to apply their physics and check for collisions
 		std::list<Enemy>::iterator it2 = enemies.begin();			
 		while (it2 != enemies.end())
-		{
-			if (!stopwatch)
-				it2->ApplyPhysics(levelTiles, totalTiles, player.PlayerBox());
+		{			
+			it2->ApplyPhysics(levelTiles, totalTiles, player.PlayerBox(), stopwatch);
 
 			SDL_Rect playerBox = player.PlayerBox();
 
@@ -234,11 +233,6 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				}
 			}	
 
-			/*if (it2->EnemyBox().x - playerBox.x < 128 && it2->Type() == EnemyType::PANTHER)
-			{
-				it2->SetIdle(false);
-			}*/
-
 			if (it2->Splash() && it2->Type() == EnemyType::FISHMAN)
 			{
 				PopupSprite(it2->EnemyBox().x - 32, it2->EnemyBox().y + 32, SPLASH_LEFT);
@@ -264,9 +258,9 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 			{
 				Enemy newEnemyProjectile;
 				if (playerBox.x < it2->EnemyBox().x)
-					newEnemyProjectile.setEnemy(it2->EnemyBox().x + 16, it2->EnemyBox().y + 12, EnemyType::PROJECTILE_FAST, true);
+					newEnemyProjectile.setEnemy(it2->EnemyBox().x + 16, it2->EnemyBox().y + 16, EnemyType::PROJECTILE_FAST, true);
 				else
-					newEnemyProjectile.setEnemy(it2->EnemyBox().x + 16, it2->EnemyBox().y + 12, EnemyType::PROJECTILE_FAST, false);
+					newEnemyProjectile.setEnemy(it2->EnemyBox().x + 16, it2->EnemyBox().y + 16, EnemyType::PROJECTILE_FAST, false);
 				enemies.push_back(newEnemyProjectile);
 			}
 
@@ -408,6 +402,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				it++;
 		}
 
+		//Iterate through pickups to see if player touches
 		std::list<Pickup>::iterator it3 = pickups.begin();
 		while (it3 != pickups.end())
 		{
@@ -525,11 +520,11 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 
 				case TRIPLE_SHOT:
 					sm->play("weapon");
-					if (player.SubWeapon() != SubWeaponType::STOPWATCH)
+					if (player.SubWeapon() != SubWeaponType::STOPWATCH && player.MaxProjectiles() != 3)
 					{
 						player.SetMaxProjectiles(3);
 					}
-					else
+					else 
 						score += 700;
 					break;
 
@@ -560,6 +555,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				it3++;
 		}
 
+		//Iterate through popups to run them
 		std::list<SpritePopup>::iterator it4 = popups.begin();
 		while (it4 != popups.end())
 		{
@@ -573,6 +569,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				it4++;
 		}
 
+		//Iterate through projectiles, different conditions for each type
 		std::list<SubWeapon>::iterator it5 = projectiles.begin();		
 		while (it5 != projectiles.end())
 		{
@@ -618,10 +615,12 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 				it5++;
 		}
 
+		//Iterate through level objects that can affect the player
 		std::list<LevelObject>::iterator it6 = levelObjects.begin();
 		while (it6 != levelObjects.end())
 		{
-			it6->ApplyPhysics(levelTiles, totalTiles); 
+			if (!stopwatch)
+				it6->ApplyPhysics(levelTiles, totalTiles); 
 
 			if (it6->Type() == LevelObjectType::CRUSHER_1)
 			{
@@ -768,8 +767,8 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 		//Boss physics and collisions
 		if (levelBoss.Awake())
 		{
-			if (!stopwatch)
-				levelBoss.ApplyPhysics(player.PosX(), player.PosY(), levelTiles);
+			
+			levelBoss.ApplyPhysics(player.PosX(), player.PosY(), levelTiles, stopwatch);
 
 			SDL_Rect tempBox = levelBoss.BossBox();
 			tempBox.x += 16;
@@ -797,7 +796,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 					sm->play("player_hurt");
 				}
 			}
-
+			//Checks between player whip and boss
 			if (checkCollision(player.AttackBox(), levelBoss.BossBox()))
 			{
 				if (levelBoss.getCooldown() <= 0)
@@ -840,7 +839,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 					}
 				}
 			}
-
+			//Checks between projectiles and boss
 			for (std::list<SubWeapon>::iterator k = projectiles.begin(); k != projectiles.end();)
 			{
 				if (checkCollision(k->SubWeaponBox(), levelBoss.BossBox()))
@@ -915,6 +914,7 @@ void Level::UpdateLevel(SDL_Rect& camera, SoundManager* sm)
 	}	
 }
 
+//Draws level with player and other objects
 void Level::DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount)
 {
 	//Draw Level background	
@@ -968,6 +968,7 @@ void Level::DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& came
 		it6->DrawLevelObject(tm, renderer, camera);
 	}
 
+	//Draws a cover for level 9 only
 	if (levelName == "level9")
 	{
 		tm->draw("crushercover", 704 - camera.x, 80 - camera.y, 320, 112, renderer, SDL_FLIP_NONE);
@@ -986,6 +987,7 @@ void Level::DrawLevel(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& came
 		tm->drawFrame("flash", 0, 0, 512, 448, 1, rosaryTimer % 2, renderer, SDL_FLIP_NONE);
 }
 
+//Draws level during door transition
 void Level::DrawLevelChange(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount, int doorTimer)
 {
 	if (levelName == "level1")
@@ -1027,6 +1029,7 @@ void Level::DrawLevelChange(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect
 	player.Draw(tm, renderer, camera, frameCount);
 }
 
+//Reads in a text file to set the tiles to make up the level
 bool Level::setTiles(std::string levelName)
 {
 	//Success flag
@@ -1314,6 +1317,7 @@ bool Level::setTiles(std::string levelName)
 	return tilesLoaded;
 }
 
+//Reads in a text file with characters for items that drop
 void Level::setPickups(std::string levelName)
 {
 	std::string level = "Assets/Pickups/";
@@ -1323,11 +1327,9 @@ void Level::setPickups(std::string levelName)
 	std::ifstream map(level);
 
 	for (int i = 0; i < totalTiles; ++i)
-	{
-		//Determines what kind of tile will be made
+	{		
 		char pickupType = '0';
-
-		//Read tile from map file
+		
 		map >> pickupType;
 
 		pickupTiles[i] = pickupType;
@@ -1393,6 +1395,7 @@ void Level::SetScore(int value)
 	score = value;
 }
 
+//Enemy spawn method runs differently for different stages
 void Level::SpawnEnemies(SDL_Rect& camera, SoundManager* sm)
 {
 	if (!stopwatch && !pause)
@@ -1500,29 +1503,29 @@ void Level::SpawnEnemies(SDL_Rect& camera, SoundManager* sm)
 			Enemy e1;
 
 			if (spawnCooldown <= 0)
-				spawnCooldown = 480;			
+				spawnCooldown = 320;			
 
-			if (spawnCooldown == 360 && player.PosX() < 704)
+			if (spawnCooldown == 240 && player.PosX() < 704)
 			{
-				e1.setEnemy(player.PosX() + 256, 288, EnemyType::FISHMAN, true);
+				e1.setEnemy(player.PosX() + 256, 288, EnemyType::FISHMAN, false);
 				PopupSprite(e1.EnemyBox().x - 32, e1.EnemyBox().y + 32, SPLASH_LEFT);
 				PopupSprite(e1.EnemyBox().x + 32, e1.EnemyBox().y + 32, SPLASH_RIGHT);
 				PopupSprite(e1.EnemyBox().x, e1.EnemyBox().y - 32, SPLASH_RIGHT);
 				enemies.push_back(e1);
 				sm->play("splash_up");
 			}
-			if (spawnCooldown == 240)
+			if (spawnCooldown == 160)
 			{
-				e1.setEnemy(player.PosX() - 256, 288, EnemyType::FISHMAN, false);
+				e1.setEnemy(player.PosX() - 256, 288, EnemyType::FISHMAN, true);
 				PopupSprite(e1.EnemyBox().x - 32, e1.EnemyBox().y + 32, SPLASH_LEFT);
 				PopupSprite(e1.EnemyBox().x + 32, e1.EnemyBox().y + 32, SPLASH_RIGHT);
 				PopupSprite(e1.EnemyBox().x, e1.EnemyBox().y - 32, SPLASH_RIGHT);
 				enemies.push_back(e1);
 				sm->play("splash_up");
 			}
-			if (spawnCooldown == 120)
+			if (spawnCooldown == 80)
 			{
-				e1.setEnemy(player.PosX() - 128, 288, EnemyType::FISHMAN, false);
+				e1.setEnemy(player.PosX() - 128, 288, EnemyType::FISHMAN, true);
 				PopupSprite(e1.EnemyBox().x - 32, e1.EnemyBox().y + 32, SPLASH_LEFT);
 				PopupSprite(e1.EnemyBox().x + 32, e1.EnemyBox().y + 32, SPLASH_RIGHT);
 				PopupSprite(e1.EnemyBox().x, e1.EnemyBox().y - 32, SPLASH_RIGHT);
@@ -1617,6 +1620,7 @@ void Level::SpawnEnemies(SDL_Rect& camera, SoundManager* sm)
 
 }
 
+//Spawns a pickup based on text file read in
 void Level::SpawnPickup(int x, int y, int offset)
 {
 

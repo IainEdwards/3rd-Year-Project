@@ -323,12 +323,12 @@ void SubWeapon::CrossPhysics()
 
 	subWeaponBox.x = (int)round(posX);
 
-	if (crossTimer > 76)
+	if (crossTimer > 60)
 	{
 		if (velChange < 3.6f)
 			velChange += 0.6f;
 	}
-	if (crossTimer > 88)
+	if (crossTimer > 72)
 	{
 		if (velChange < 7.2f)
 			velChange += 0.6f;

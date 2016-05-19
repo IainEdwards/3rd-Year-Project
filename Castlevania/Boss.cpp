@@ -81,7 +81,7 @@ void Boss::setBoss(int x, int y, BossType type, int totalLevelTiles)
 		bossBox.w = 64;
 		bossBox.h = 64;
 
-		hitPoints = 16;
+		hitPoints = 32;
 		medusaTimer = 0;
 		break;
 
@@ -90,25 +90,28 @@ void Boss::setBoss(int x, int y, BossType type, int totalLevelTiles)
 	}
 }
 
-void Boss::ApplyPhysics(int playerPosX, int playerPosY, Tile* tiles[])
+void Boss::ApplyPhysics(int playerPosX, int playerPosY, Tile* tiles[], bool stopwatch)
 {
 	if (cooldown > 0)
 		cooldown--;
 
-	if (cooldown <= 12)
+	if (!stopwatch)
 	{
-		switch (bossType)
+		if (cooldown <= 12)
 		{
-		case VAMPIRE_BAT:
-			VampireBatPhysics(playerPosX, playerPosY, tiles);
-			break;
+			switch (bossType)
+			{
+			case VAMPIRE_BAT:
+				VampireBatPhysics(playerPosX, playerPosY, tiles);
+				break;
 
-		case MEDUSA:
-			MedusaPhysics(playerPosX, playerPosY, tiles);
-			break;
+			case MEDUSA:
+				MedusaPhysics(playerPosX, playerPosY, tiles);
+				break;
 
-		default:
-			break;
+			default:
+				break;
+			}
 		}
 	}
 }
@@ -136,6 +139,7 @@ void Boss::DrawBoss(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera
 	default:
 		break;
 	}
+
 }
 
 void Boss::takeHit(int whipLevel)

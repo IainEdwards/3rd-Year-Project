@@ -34,7 +34,7 @@ public:
 	Enemy();	
 	~Enemy();
 
-	void ApplyPhysics(Tile *tiles[], int totalTiles, SDL_Rect playerBox);
+	void ApplyPhysics(Tile *tiles[], int totalTiles, SDL_Rect playerBox, bool stopwatch);
 
 	void DrawEnemy(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 

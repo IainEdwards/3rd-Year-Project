@@ -19,7 +19,7 @@ public:
 	Boss();
 	~Boss();
 
-	void ApplyPhysics(int playerPosX, int playerPosY, Tile* tiles[]);
+	void ApplyPhysics(int playerPosX, int playerPosY, Tile* tiles[], bool stopwatch);
 
 	void DrawBoss(TextureManager* tm, SDL_Renderer* renderer, SDL_Rect& camera, int frameCount);
 
